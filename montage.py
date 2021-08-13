@@ -5,6 +5,21 @@ from PIL import Image
 from pathlib import Path
 
 
+def get_list_from_file(file_name):
+    p = Path(file_name).expanduser().resolve()
+    if not p.exists():
+        print(f"ERROR: File not found: {file_name}")
+        return []
+    with open(p, 'r') as f:
+        lines = f.readlines()
+    add_pics = []
+    for line in lines:
+        s = line.strip()
+        if len(s) > 0 and not s.startswith('#'):
+            add_pics.append(s.strip("'\""))
+    return add_pics
+    
+
 def get_scale_factor(pic_size, frame_size):
     w = frame_size[0] / pic_size[0]
     h = frame_size[1] / pic_size[1]
@@ -12,6 +27,10 @@ def get_scale_factor(pic_size, frame_size):
 
 
 def main():
+    default_file_name = 'output.jpg'
+    default_canvas_width = 640
+    default_canvas_height = 480
+
     ap = argparse.ArgumentParser(
         description =
         'Create an image montage given a list of image files.')
@@ -41,21 +60,23 @@ def main():
     ap.add_argument(
         '-o', '--output-file',
         dest = 'output_file',
-        default = 'output.jpg',
+        default = default_file_name,
         action = 'store',
         help = 'Name of output file.')
 
+    ap.add_argument(
+        '-l', '--list-file',
+        dest = 'list_file',
+        action = 'store',
+        help = 'Name of file containing a list of image file names.')
+
     args = ap.parse_args()
 
-    #file_name = 'output.jpg'
     file_name = args.output_file
 
     canvas_width = 640
     canvas_height = 480
     canvas_size = (canvas_width, canvas_height)
-
-    # cols = 3
-    # rows = 3
 
     margin = 20
 
@@ -67,19 +88,8 @@ def main():
 
     pics = [pic for pic in args.images]
 
-
-    # # Same size.
-    # pics.append(Path.cwd() / 'images' / 'IM000481_resize_1024x768.JPG')
-    # pics.append(Path.cwd() / 'images' / 'IM000482_resize_1024x768.JPG')
-    # pics.append(Path.cwd() / 'images' / 'IM000483_resize_1024x768.JPG')
-    # pics.append(Path.cwd() / 'images' / 'IM000484_resize_1024x768.JPG')
-    # pics.append(Path.cwd() / 'images' / 'IM000488_resize_1024x768.JPG')
-
-    # # Different sizes.
-    # pics.append(Path.cwd() / 'images' / 'IM000481_resize_400x439.JPG')
-    # pics.append(Path.cwd() / 'images' / 'IM000481_resize_700x768.JPG')
-    # pics.append(Path.cwd() / 'images' / 'IM000484_resize_400x234.JPG')
-    # pics.append(Path.cwd() / 'images' / 'IM000484_resize_1024x600.JPG')
+    if args.list_file is not None:
+        pics += get_list_from_file(args.list_file)
 
     image = Image.new('RGB', canvas_size, bg_color)
 

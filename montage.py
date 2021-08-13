@@ -8,6 +8,7 @@ from pathlib import Path
 def get_arguments():
     default_canvas_width = 640
     default_canvas_height = 480
+    default_margin = 20
     default_file_name = 'output.jpg'
 
     ap = argparse.ArgumentParser(
@@ -72,6 +73,14 @@ def get_arguments():
         action = 'store',
         help = 'Featured image width.')
 
+    ap.add_argument(
+        '-m', '--margin',
+        dest = 'margin',
+        type = int,
+        default = default_margin,
+        action = 'store',
+        help = 'Margin in pixels.')
+
     return ap.parse_args()
 
 
@@ -117,17 +126,14 @@ def main():
 
     canvas_size = (args.canvas_width, args.canvas_height)
 
-    margin = 20
-
     if args.feature_width is None:
         use_width = args.canvas_width
     else:
-        assert(abs(args.feature_width) < (args.canvas_width + (margin * 2)))
+        assert(abs(args.feature_width) < (args.canvas_width + (args.margin * 2)))
         use_width = args.canvas_width - abs(args.feature_width)
 
-    #frame_width = int((args.canvas_width / args.cols) - (margin + (margin / args.cols)))
-    frame_width = int((use_width / args.cols) - (margin + (margin / args.cols)))
-    frame_height = int((args.canvas_height / args.rows) - (margin + (margin / args.rows)))
+    frame_width = int((use_width / args.cols) - (args.margin + (args.margin / args.cols)))
+    frame_height = int((args.canvas_height / args.rows) - (args.margin + (args.margin / args.rows)))
     frame_size = (frame_width, frame_height)
 
     bg_color = (0, 32, 0)  # (red, green, blue)
@@ -149,8 +155,8 @@ def main():
     else:
         feature_offset = args.feature_width
 
-        feature_width = int(abs(args.feature_width) - margin)
-        feature_height = int(args.canvas_height - (margin * 2))
+        feature_width = int(abs(args.feature_width) - args.margin)
+        feature_height = int(args.canvas_height - (args.margin * 2))
         
         feature_size = (feature_width, feature_height)
         frame = Image.new('RGB', feature_size, frame_bg_color)
@@ -161,12 +167,12 @@ def main():
             pic = pic.resize(new_size)            
             frame.paste(pic, placement)
 
-        image.paste(frame, (margin, margin))
+        image.paste(frame, (args.margin, args.margin))
 
     for y in range(0, args.rows):
-        y_offset = int(margin + (y * frame_height) + (y * margin))
+        y_offset = int(args.margin + (y * frame_height) + (y * args.margin))
         for x in range(0, args.cols):
-            x_offset = int(feature_offset + margin + (x * frame_width) + (x * margin))
+            x_offset = int(feature_offset + args.margin + (x * frame_width) + (x * args.margin))
 
             frame = Image.new('RGB', frame_size, frame_bg_color)
 

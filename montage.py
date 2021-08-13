@@ -74,6 +74,15 @@ def get_arguments():
         help = 'Featured image width.')
 
     ap.add_argument(
+        '-b', '--background-rgb',
+        dest = 'bg_color_str',
+        type=str, 
+        action = 'store',
+        help = 'Background color as red,green,blue. '
+        + 'Also accepts r1,g1,b1,r2,g2,b2 where 2nd set is '
+        + 'the background color for the innder frames.')
+
+    ap.add_argument(
         '-m', '--margin',
         dest = 'margin',
         type = int,
@@ -119,8 +128,25 @@ def get_size_and_placement(pic_size, target_size):
     return ((size_width, size_height), (place_x, place_y))
 
 
+def get_background_rgb(default, arg_str):
+    if arg_str is None:
+        return default
+    a = arg_str.strip().split(',')
+    if len(a) == 3:
+        if any(not x.isdigit() for x in a):
+            print("WARNING: Invalid backround color setting. Expecting three numeric values. Using default.")
+            return default
+        else:
+            return (int(a[0]), int(a[1]), int(a[2]))
+    else:
+        print("WARNING: Invalid backround color setting. Expecting three numbers separated by commas. Using default.")
+        return default
+
+
 def main():
     args = get_arguments()
+
+    bg_color = get_background_rgb((0, 32, 0), args.bg_color_str)
 
     file_name = args.output_file
 
@@ -136,7 +162,7 @@ def main():
     frame_height = int((args.canvas_height / args.rows) - (args.margin + (args.margin / args.rows)))
     frame_size = (frame_width, frame_height)
 
-    bg_color = (0, 32, 0)  # (red, green, blue)
+    #bg_color = (0, 32, 0)  # (red, green, blue)
 
     pics = [pic for pic in args.images]
 

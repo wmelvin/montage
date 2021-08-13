@@ -95,6 +95,20 @@ def get_scale_factor(pic_size, frame_size):
     h = frame_size[1] / pic_size[1]
     return min(w, h)
 
+def get_size_and_placement(pic_size, target_size):
+    scale_factor = get_scale_factor(pic_size, target_size)
+    size_width = int(pic_size[0] * scale_factor)
+    size_height = int(pic_size[1] * scale_factor)
+    if size_width < target_size[0]:
+        place_x = int((target_size[0] - size_width) / 2)
+    else:
+        place_x = 0
+    if size_height < target_size[1]:
+        place_y = int((target_size[1] - size_height) / 2)
+    else:
+        place_x = 0    
+    return ((size_width, size_height), (place_x, place_y))
+
 
 def main():
     args = get_arguments()
@@ -136,30 +150,16 @@ def main():
         feature_offset = args.feature_width
 
         feature_width = int(abs(args.feature_width) - margin)
-        feature_height = int(args.canvas_height - margin)
+        feature_height = int(args.canvas_height - (margin * 2))
         
         feature_size = (feature_width, feature_height)
         frame = Image.new('RGB', feature_size, frame_bg_color)
         if args.feature_width > 0:
             pic = Image.open(pics[pic_index])
             pic_index += 1
-            scale_factor = get_scale_factor(pic.size, feature_size)
-            new_width = int(pic.width * scale_factor)
-            new_height = int(pic.height * scale_factor)
-                
-            pic = pic.resize((new_width, new_height))
-
-            if new_width < feature_width:
-                w = int((feature_width - new_width) / 2)
-            else:
-                w = 0
-
-            if new_height < feature_height:
-                h = int((feature_height - new_height) / 2)
-            else:
-                h = 0
-            
-            frame.paste(pic, (w, h))
+            (new_size, placement) = get_size_and_placement(pic.size, feature_size)                
+            pic = pic.resize(new_size)            
+            frame.paste(pic, placement)
 
         image.paste(frame, (margin, margin))
 
@@ -173,24 +173,9 @@ def main():
             if pic_index < len(pics):        
                 pic = Image.open(pics[pic_index])
                 pic_index += 1
-
-                scale_factor = get_scale_factor(pic.size, frame_size)
-                new_width = int(pic.width * scale_factor)
-                new_height = int(pic.height * scale_factor)
-                
-                pic = pic.resize((new_width, new_height))
-
-                if new_width < frame_width:
-                    w = int((frame_width - new_width) / 2)
-                else:
-                    w = 0
-
-                if new_height < frame_height:
-                    h = int((frame_height - new_height) / 2)
-                else:
-                    h = 0
-            
-                frame.paste(pic, (w, h))
+                (new_size, placement) = get_size_and_placement(pic.size, frame_size)
+                pic = pic.resize(new_size)
+                frame.paste(pic, placement)
 
             image.paste(frame, (x_offset, y_offset))
 

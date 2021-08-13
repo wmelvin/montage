@@ -10,6 +10,7 @@ def get_scale_factor(pic_size, frame_size):
     h = frame_size[1] / pic_size[1]
     return min(w, h)
 
+
 def main():
     ap = argparse.ArgumentParser(
         description =
@@ -20,6 +21,22 @@ def main():
         nargs = '*',
         action = 'store',
         help = 'Images files to include in the montage image. Multiple files can be specified.')
+
+    ap.add_argument(
+        '-c', '--columns',
+        dest = 'cols',
+        type = int,
+        default = 2,
+        action = 'store',
+        help = 'Number of columns.')
+
+    ap.add_argument(
+        '-r', '--rows',
+        dest = 'rows',
+        type = int,
+        default = 2,
+        action = 'store',
+        help = 'Number of rows.')
 
     ap.add_argument(
         '-o', '--output-file',
@@ -37,31 +54,32 @@ def main():
     canvas_height = 480
     canvas_size = (canvas_width, canvas_height)
 
-    cols = 3
-    rows = 3
+    # cols = 3
+    # rows = 3
 
     margin = 20
 
-    frame_width = int((canvas_width / cols) - (margin + (margin / cols)))
-    frame_height = int((canvas_height / rows) - (margin + (margin / rows)))
+    frame_width = int((canvas_width / args.cols) - (margin + (margin / args.cols)))
+    frame_height = int((canvas_height / args.rows) - (margin + (margin / args.rows)))
     frame_size = (frame_width, frame_height)
 
     bg_color = (0, 32, 0)  # (red, green, blue)
 
-    pics = []
+    pics = [pic for pic in args.images]
 
-    # Same size.
-    pics.append(Path.cwd() / 'images' / 'IM000481_resize_1024x768.JPG')
-    pics.append(Path.cwd() / 'images' / 'IM000482_resize_1024x768.JPG')
-    pics.append(Path.cwd() / 'images' / 'IM000483_resize_1024x768.JPG')
-    pics.append(Path.cwd() / 'images' / 'IM000484_resize_1024x768.JPG')
-    pics.append(Path.cwd() / 'images' / 'IM000488_resize_1024x768.JPG')
 
-    # Different sizes.
-    pics.append(Path.cwd() / 'images' / 'IM000481_resize_400x439.JPG')
-    pics.append(Path.cwd() / 'images' / 'IM000481_resize_700x768.JPG')
-    pics.append(Path.cwd() / 'images' / 'IM000484_resize_400x234.JPG')
-    pics.append(Path.cwd() / 'images' / 'IM000484_resize_1024x600.JPG')
+    # # Same size.
+    # pics.append(Path.cwd() / 'images' / 'IM000481_resize_1024x768.JPG')
+    # pics.append(Path.cwd() / 'images' / 'IM000482_resize_1024x768.JPG')
+    # pics.append(Path.cwd() / 'images' / 'IM000483_resize_1024x768.JPG')
+    # pics.append(Path.cwd() / 'images' / 'IM000484_resize_1024x768.JPG')
+    # pics.append(Path.cwd() / 'images' / 'IM000488_resize_1024x768.JPG')
+
+    # # Different sizes.
+    # pics.append(Path.cwd() / 'images' / 'IM000481_resize_400x439.JPG')
+    # pics.append(Path.cwd() / 'images' / 'IM000481_resize_700x768.JPG')
+    # pics.append(Path.cwd() / 'images' / 'IM000484_resize_400x234.JPG')
+    # pics.append(Path.cwd() / 'images' / 'IM000484_resize_1024x600.JPG')
 
     image = Image.new('RGB', canvas_size, bg_color)
 
@@ -69,9 +87,9 @@ def main():
     #frame_bg_color = bg_color
 
     pic_index = 0
-    for y in range(0, rows):
+    for y in range(0, args.rows):
         y_offset = int(margin + (y * frame_height) + (y * margin))
-        for x in range(0, cols):
+        for x in range(0, args.cols):
             x_offset = int(margin + (x * frame_width) + (x * margin))
 
             frame = Image.new('RGB', frame_size, frame_bg_color)

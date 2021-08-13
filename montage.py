@@ -4,8 +4,11 @@ import argparse
 from PIL import Image
 from pathlib import Path
 
+
 app_version = '20210813.1'
+
 app_title = f'montage.py - version {app_version}'
+
 
 def get_arguments():
     default_canvas_width = 640
@@ -63,12 +66,6 @@ def get_arguments():
         help = 'Name of output file.')
 
     ap.add_argument(
-        '-l', '--list-file',
-        dest = 'list_file',
-        action = 'store',
-        help = 'Name of file containing a list of image file names.')
-
-    ap.add_argument(
         '-f', '--feature-width',
         dest = 'feature_width',
         type = int,
@@ -99,6 +96,7 @@ def get_arguments():
         help = 'Name of settings file.')
 
     return ap.parse_args()
+
 
 def get_option_entries(opt_section, opt_content):
     result = []
@@ -160,25 +158,11 @@ def get_options_from_file(file_name, args, image_list):
     image_list += [x.strip("'\"") for x in get_option_entries('[images]', file_text)]
 
 
-def get_list_from_file(file_name):
-    p = Path(file_name).expanduser().resolve()
-    if not p.exists():
-        print(f"ERROR: File not found: {file_name}")
-        return []
-    with open(p, 'r') as f:
-        lines = f.readlines()
-    add_pics = []
-    for line in lines:
-        s = line.strip()
-        if len(s) > 0 and not s.startswith('#'):
-            add_pics.append(s.strip("'\""))
-    return add_pics
-    
-
 def get_scale_factor(pic_size, frame_size):
     w = frame_size[0] / pic_size[0]
     h = frame_size[1] / pic_size[1]
     return min(w, h)
+
 
 def get_size_and_placement(pic_size, target_size):
     scale_factor = get_scale_factor(pic_size, target_size)
@@ -225,16 +209,13 @@ def get_background_colors(default, arg_str):
 
 def main():
     print(f"\n{app_title}")
-    
+
     args = get_arguments()
 
     pics = [pic for pic in args.images]
 
     if args.settings_file is not None:
         get_options_from_file(args.settings_file, args, pics)
-
-    if args.list_file is not None:
-        pics += get_list_from_file(args.list_file)
 
     (bg_color, frame_bg_color) = get_background_colors((0, 32, 0), args.bg_color_str)
 

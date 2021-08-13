@@ -4,6 +4,8 @@ import argparse
 from PIL import Image
 from pathlib import Path
 
+app_version = '20210813.1'
+app_title = f'montage.py - version {app_version}'
 
 def get_arguments():
     default_canvas_width = 640
@@ -90,7 +92,72 @@ def get_arguments():
         action = 'store',
         help = 'Margin in pixels.')
 
+    ap.add_argument(
+        '-s', '--settings-file',
+        dest = 'settings_file',
+        action = 'store',
+        help = 'Name of settings file.')
+
     return ap.parse_args()
+
+def get_option_entries(opt_section, opt_content):
+    result = []
+    in_section = False
+    for line in opt_content:
+        s = line.strip()
+        if len(s) == 0:
+            in_section = False
+        else:
+            if in_section:
+                # Handle new section w/o blank lines between.
+                if s.startswith('['):
+                    in_section = False
+                # Support whole-line comments identified by '#' (ignore them).
+                elif not s.startswith('#'):
+                    result.append(s)
+            if s == opt_section:
+                in_section = True
+    return result
+
+
+def get_opt_str(default, opt_name, content):
+    for opt in content:
+        if opt.strip().startswith(opt_name):
+            a = opt.split('=', 1)
+            if len(a) == 2:
+                return a[1].strip("'\"")
+    return default            
+
+
+def get_opt_int(default, opt_name, content):
+    s = get_opt_str(None, opt_name, content) 
+    if s is None:
+        return default
+    else:
+        return int(s)
+
+
+def get_options_from_file(file_name, args, image_list):
+    p = Path(file_name).expanduser().resolve()
+    if not p.exists():
+        print(f"ERROR: File not found: {file_name}")
+        return
+
+    with open(p, 'r') as f:
+        file_text = f.readlines()
+
+    settings = get_option_entries('[settings]', file_text)
+
+    args.canvas_width = get_opt_int(args.canvas_width, 'canvas_width', settings)
+    args.canvas_height = get_opt_int(args.canvas_height, 'canvas_height', settings)
+    args.cols = get_opt_int(args.cols, 'columns', settings)
+    args.rows = get_opt_int(args.rows, 'rows', settings)
+    args.margin = get_opt_int(args.margin, 'margin', settings)
+    args.feature_width = get_opt_int(args.feature_width, 'feature_width', settings)
+    args.bg_color_str = get_opt_str(args.bg_color_str, 'background_rgb', settings)
+    args.output_file = get_opt_str(args.output_file, 'output_file', settings)
+
+    image_list += [x.strip("'\"") for x in get_option_entries('[images]', file_text)]
 
 
 def get_list_from_file(file_name):
@@ -124,7 +191,7 @@ def get_size_and_placement(pic_size, target_size):
     if size_height < target_size[1]:
         place_y = int((target_size[1] - size_height) / 2)
     else:
-        place_x = 0    
+        place_y = 0    
     return ((size_width, size_height), (place_x, place_y))
 
 
@@ -157,12 +224,19 @@ def get_background_colors(default, arg_str):
 
 
 def main():
+    print(f"\n{app_title}")
+    
     args = get_arguments()
 
-    (bg_color, frame_bg_color) = get_background_colors((0, 32, 0), args.bg_color_str)
+    pics = [pic for pic in args.images]
 
-    # #  Force frame_bg_color for debugging.
-    # frame_bg_color = (210, 240, 210)
+    if args.settings_file is not None:
+        get_options_from_file(args.settings_file, args, pics)
+
+    if args.list_file is not None:
+        pics += get_list_from_file(args.list_file)
+
+    (bg_color, frame_bg_color) = get_background_colors((0, 32, 0), args.bg_color_str)
 
     file_name = args.output_file
 
@@ -177,11 +251,6 @@ def main():
     frame_width = int((use_width / args.cols) - (args.margin + (args.margin / args.cols)))
     frame_height = int((args.canvas_height / args.rows) - (args.margin + (args.margin / args.rows)))
     frame_size = (frame_width, frame_height)
-
-    pics = [pic for pic in args.images]
-
-    if args.list_file is not None:
-        pics += get_list_from_file(args.list_file)
 
     image = Image.new('RGB', canvas_size, bg_color)
 
@@ -222,10 +291,11 @@ def main():
 
             image.paste(frame, (x_offset, y_offset))
 
-    print(f"\nSaving {file_name}.")
+    print(f"\nSaving '{file_name}'.")
 
     image.save(file_name)
 
+    print(f"\nDone ({app_title}).")
 
 
 if __name__ == "__main__":

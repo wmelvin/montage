@@ -128,25 +128,41 @@ def get_size_and_placement(pic_size, target_size):
     return ((size_width, size_height), (place_x, place_y))
 
 
-def get_background_rgb(default, arg_str):
+def get_background_colors(default, arg_str):
     if arg_str is None:
-        return default
+        return (default, default)
+
     a = arg_str.strip().split(',')
+
+    if any(not x.isdigit() for x in a):
+        print("WARNING: Invalid backround color setting. ",
+            "Expecting numeric values separated by commas. ",
+            "Using default setting."
+        )
+        return (default, default)
+
     if len(a) == 3:
-        if any(not x.isdigit() for x in a):
-            print("WARNING: Invalid backround color setting. Expecting three numeric values. Using default.")
-            return default
-        else:
-            return (int(a[0]), int(a[1]), int(a[2]))
+        rgb = (int(a[0]), int(a[1]), int(a[2]))
+        return (rgb, rgb)
+    elif len(a) == 6:
+        rgb1 = (int(a[0]), int(a[1]), int(a[2]))
+        rgb2 = (int(a[3]), int(a[4]), int(a[5]))
+        return (rgb1, rgb2)
     else:
-        print("WARNING: Invalid backround color setting. Expecting three numbers separated by commas. Using default.")
-        return default
+        print("WARNING: Invalid backround color setting. ", 
+            "Expecting three (or six) numbers separated by commas. ", 
+            "Using default."
+        )
+        return (default, default)
 
 
 def main():
     args = get_arguments()
 
-    bg_color = get_background_rgb((0, 32, 0), args.bg_color_str)
+    (bg_color, frame_bg_color) = get_background_colors((0, 32, 0), args.bg_color_str)
+
+    # #  Force frame_bg_color for debugging.
+    # frame_bg_color = (210, 240, 210)
 
     file_name = args.output_file
 
@@ -162,17 +178,12 @@ def main():
     frame_height = int((args.canvas_height / args.rows) - (args.margin + (args.margin / args.rows)))
     frame_size = (frame_width, frame_height)
 
-    #bg_color = (0, 32, 0)  # (red, green, blue)
-
     pics = [pic for pic in args.images]
 
     if args.list_file is not None:
         pics += get_list_from_file(args.list_file)
 
     image = Image.new('RGB', canvas_size, bg_color)
-
-    frame_bg_color = (0, 64, 0)
-    #frame_bg_color = bg_color
 
     pic_index = 0
 

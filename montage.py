@@ -65,6 +65,13 @@ def get_arguments():
         action = 'store',
         help = 'Name of file containing a list of image file names.')
 
+    ap.add_argument(
+        '-f', '--feature-width',
+        dest = 'feature_width',
+        type = int,
+        action = 'store',
+        help = 'Featured image width.')
+
     return ap.parse_args()
 
 
@@ -98,7 +105,14 @@ def main():
 
     margin = 20
 
-    frame_width = int((args.canvas_width / args.cols) - (margin + (margin / args.cols)))
+    if args.feature_width is None:
+        use_width = args.canvas_width
+    else:
+        assert(abs(args.feature_width) < (args.canvas_width + (margin * 2)))
+        use_width = args.canvas_width - abs(args.feature_width)
+
+    #frame_width = int((args.canvas_width / args.cols) - (margin + (margin / args.cols)))
+    frame_width = int((use_width / args.cols) - (margin + (margin / args.cols)))
     frame_height = int((args.canvas_height / args.rows) - (margin + (margin / args.rows)))
     frame_size = (frame_width, frame_height)
 
@@ -115,10 +129,44 @@ def main():
     #frame_bg_color = bg_color
 
     pic_index = 0
+
+    if args.feature_width is None:
+        feature_offset = 0
+    else:
+        feature_offset = args.feature_width
+
+        feature_width = int(abs(args.feature_width) - margin)
+        feature_height = int(args.canvas_height - margin)
+        
+        feature_size = (feature_width, feature_height)
+        frame = Image.new('RGB', feature_size, frame_bg_color)
+        if args.feature_width > 0:
+            pic = Image.open(pics[pic_index])
+            pic_index += 1
+            scale_factor = get_scale_factor(pic.size, feature_size)
+            new_width = int(pic.width * scale_factor)
+            new_height = int(pic.height * scale_factor)
+                
+            pic = pic.resize((new_width, new_height))
+
+            if new_width < feature_width:
+                w = int((feature_width - new_width) / 2)
+            else:
+                w = 0
+
+            if new_height < feature_height:
+                h = int((feature_height - new_height) / 2)
+            else:
+                h = 0
+            
+            frame.paste(pic, (w, h))
+
+        image.paste(frame, (margin, margin))
+
     for y in range(0, args.rows):
         y_offset = int(margin + (y * frame_height) + (y * margin))
         for x in range(0, args.cols):
-            x_offset = int(margin + (x * frame_width) + (x * margin))
+            x_offset = int(feature_offset + margin + (x * frame_width) + (x * margin))
 
             frame = Image.new('RGB', frame_size, frame_bg_color)
 
@@ -142,7 +190,7 @@ def main():
                 else:
                     h = 0
             
-                frame.paste(pic, (w,h))
+                frame.paste(pic, (w, h))
 
             image.paste(frame, (x_offset, y_offset))
 

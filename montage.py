@@ -5,31 +5,10 @@ from PIL import Image
 from pathlib import Path
 
 
-def get_list_from_file(file_name):
-    p = Path(file_name).expanduser().resolve()
-    if not p.exists():
-        print(f"ERROR: File not found: {file_name}")
-        return []
-    with open(p, 'r') as f:
-        lines = f.readlines()
-    add_pics = []
-    for line in lines:
-        s = line.strip()
-        if len(s) > 0 and not s.startswith('#'):
-            add_pics.append(s.strip("'\""))
-    return add_pics
-    
-
-def get_scale_factor(pic_size, frame_size):
-    w = frame_size[0] / pic_size[0]
-    h = frame_size[1] / pic_size[1]
-    return min(w, h)
-
-
-def main():
-    default_file_name = 'output.jpg'
+def get_arguments():
     default_canvas_width = 640
     default_canvas_height = 480
+    default_file_name = 'output.jpg'
 
     ap = argparse.ArgumentParser(
         description =
@@ -58,6 +37,22 @@ def main():
         help = 'Number of rows.')
 
     ap.add_argument(
+        '-x', '--canvas-width',
+        dest = 'canvas_width',
+        type = int,
+        default = default_canvas_width,
+        action = 'store',
+        help = 'Canvas width in pixels.')
+
+    ap.add_argument(
+        '-y', '--canvas-height',
+        dest = 'canvas_height',
+        type = int,
+        default = default_canvas_height,
+        action = 'store',
+        help = 'Canvas height in pixels.')
+
+    ap.add_argument(
         '-o', '--output-file',
         dest = 'output_file',
         default = default_file_name,
@@ -70,18 +65,41 @@ def main():
         action = 'store',
         help = 'Name of file containing a list of image file names.')
 
-    args = ap.parse_args()
+    return ap.parse_args()
+
+
+def get_list_from_file(file_name):
+    p = Path(file_name).expanduser().resolve()
+    if not p.exists():
+        print(f"ERROR: File not found: {file_name}")
+        return []
+    with open(p, 'r') as f:
+        lines = f.readlines()
+    add_pics = []
+    for line in lines:
+        s = line.strip()
+        if len(s) > 0 and not s.startswith('#'):
+            add_pics.append(s.strip("'\""))
+    return add_pics
+    
+
+def get_scale_factor(pic_size, frame_size):
+    w = frame_size[0] / pic_size[0]
+    h = frame_size[1] / pic_size[1]
+    return min(w, h)
+
+
+def main():
+    args = get_arguments()
 
     file_name = args.output_file
 
-    canvas_width = 640
-    canvas_height = 480
-    canvas_size = (canvas_width, canvas_height)
+    canvas_size = (args.canvas_width, args.canvas_height)
 
     margin = 20
 
-    frame_width = int((canvas_width / args.cols) - (margin + (margin / args.cols)))
-    frame_height = int((canvas_height / args.rows) - (margin + (margin / args.rows)))
+    frame_width = int((args.canvas_width / args.cols) - (margin + (margin / args.cols)))
+    frame_height = int((args.canvas_height / args.rows) - (margin + (margin / args.rows)))
     frame_size = (frame_width, frame_height)
 
     bg_color = (0, 32, 0)  # (red, green, blue)
@@ -131,6 +149,7 @@ def main():
     print(f"\nSaving {file_name}.")
 
     image.save(file_name)
+
 
 
 if __name__ == "__main__":

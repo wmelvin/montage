@@ -25,6 +25,9 @@ class Options:
         self.featured1 = None
         self.featured2 = None
         self.image_list = []
+
+        #TODO: Temporary stub
+        self.feature_width = None
     
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
@@ -296,63 +299,63 @@ def get_background_colors(default, arg_str):
 def main():
     print(f"\n{app_title}")
 
-    args = get_arguments()
+    #args = get_arguments()
 
-    pics = [pic for pic in args.images]
+    #pics = [pic for pic in args.images]
 
-    opts = get_options(args)
+    opts = get_options(get_arguments())
 
-    print(opts.canvas_size())
+    #print(opts.canvas_size())
 
-    if args.settings_file is not None:
-        get_options_from_file(args.settings_file, args, pics)
+    # if args.settings_file is not None:
+    #     get_options_from_file(args.settings_file, args, pics)
 
-    (bg_color, frame_bg_color) = get_background_colors((0, 32, 0), args.bg_color_str)
+    # (bg_color, frame_bg_color) = get_background_colors((0, 32, 0), args.bg_color_str)
 
-    canvas_size = (args.canvas_width, args.canvas_height)
+    # canvas_size = (args.canvas_width, args.canvas_height)
 
-    if args.feature_width is None:
-        use_width = args.canvas_width
+    if opts.feature_width is None:
+        use_width = opts.canvas_width
     else:
-        assert(abs(args.feature_width) < (args.canvas_width + (args.margin * 2)))
-        use_width = args.canvas_width - abs(args.feature_width)
+        assert(abs(opts.feature_width) < (opts.canvas_width + (opts.margin * 2)))
+        use_width = opts.canvas_width - abs(opts.feature_width)
 
-    frame_width = int((use_width / args.cols) - (args.margin + (args.margin / args.cols)))
-    frame_height = int((args.canvas_height / args.rows) - (args.margin + (args.margin / args.rows)))
+    frame_width = int((use_width / opts.cols) - (opts.margin + (opts.margin / opts.cols)))
+    frame_height = int((opts.canvas_height / opts.rows) - (opts.margin + (opts.margin / opts.rows)))
     frame_size = (frame_width, frame_height)
 
-    image = Image.new('RGB', canvas_size, bg_color)
+    image = Image.new('RGB', opts.canvas_size(), opts.bg_color)
 
     pic_index = 0
 
-    if args.feature_width is None:
+    if opts.feature_width is None:
         feature_offset = 0
     else:
-        feature_offset = abs(args.feature_width)
+        feature_offset = abs(opts.feature_width)
 
-        feature_width = int(abs(args.feature_width) - args.margin)
-        feature_height = int(args.canvas_height - (args.margin * 2))
+        feature_width = int(abs(opts.feature_width) - opts.margin)
+        feature_height = int(opts.canvas_height - (opts.margin * 2))
         
         feature_size = (feature_width, feature_height)
-        frame = Image.new('RGB', feature_size, frame_bg_color)
-        if args.feature_width > 0:
-            pic = Image.open(pics[pic_index])
+        frame = Image.new('RGB', feature_size, opts.frame_bg_color)
+        if opts.feature_width > 0:
+            pic = Image.open(opts.image_list[pic_index])
             pic_index += 1
             (new_size, placement) = get_size_and_placement(pic.size, feature_size)                
             pic = pic.resize(new_size)            
             frame.paste(pic, placement)
 
-        image.paste(frame, (args.margin, args.margin))
+        image.paste(frame, (opts.margin, opts.margin))
 
-    for y in range(0, args.rows):
-        y_offset = int(args.margin + (y * frame_height) + (y * args.margin))
-        for x in range(0, args.cols):
-            x_offset = int(feature_offset + args.margin + (x * frame_width) + (x * args.margin))
+    for y in range(0, opts.rows):
+        y_offset = int(opts.margin + (y * frame_height) + (y * opts.margin))
+        for x in range(0, opts.cols):
+            x_offset = int(feature_offset + opts.margin + (x * frame_width) + (x * opts.margin))
 
-            frame = Image.new('RGB', frame_size, frame_bg_color)
+            frame = Image.new('RGB', frame_size, opts.frame_bg_color)
 
-            if pic_index < len(pics):        
-                pic = Image.open(pics[pic_index])
+            if pic_index < len(opts.image_list):        
+                pic = Image.open(opts.image_list[pic_index])
                 pic_index += 1
                 (new_size, placement) = get_size_and_placement(pic.size, frame_size)
                 pic = pic.resize(new_size)
@@ -360,9 +363,9 @@ def main():
 
             image.paste(frame, (x_offset, y_offset))
 
-    print(f"\nSaving '{args.output_file}'.")
+    print(f"\nSaving '{opts.out_file_name}'.")
 
-    image.save(args.output_file)
+    image.save(opts.out_file_name)
 
     print(f"\nDone ({app_title}).")
 

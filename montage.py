@@ -10,7 +10,7 @@ app_version = '20210814.1'
 app_title = f'montage.py - version {app_version}'
 
 
-class Options:
+class AppOptions:
 
     def __init__(self):
         self.out_file_name = None
@@ -34,18 +34,18 @@ class Options:
     
 
 def get_options(args):
-    result = Options()
+    ao = AppOptions()
     
-    # result.canvas_width = args.canvas_width
-    # result.canvas_height = args.canvas_height
-
     if args.settings_file is None:
         file_text = ''
     else:
         p = Path(args.settings_file).expanduser().resolve()
+        
+        #TODO: Check exists, or just let an exception happen?
         # if not p.exists():
         #     print(f"ERROR: File not found: {args.settings_file}")
         #     return
+
         with open(p, 'r') as f:
             file_text = f.readlines()
 
@@ -54,28 +54,28 @@ def get_options(args):
 
     settings = get_option_entries('[settings]', file_text)
 
-    result.canvas_width = get_opt_int(args.canvas_width, 'canvas_width', settings)
-    result.canvas_height = get_opt_int(args.canvas_height, 'canvas_height', settings)
-    result.cols = get_opt_int(args.cols, 'columns', settings)
-    result.rows = get_opt_int(args.rows, 'rows', settings)
-    result.margin = get_opt_int(args.margin, 'margin', settings)
+    ao.canvas_width = get_opt_int(args.canvas_width, 'canvas_width', settings)
+    ao.canvas_height = get_opt_int(args.canvas_height, 'canvas_height', settings)
+    ao.cols = get_opt_int(args.cols, 'columns', settings)
+    ao.rows = get_opt_int(args.rows, 'rows', settings)
+    ao.margin = get_opt_int(args.margin, 'margin', settings)
 
-    result.bg_color, result.frame_bg_color = get_background_colors((0, 32, 0), args.bg_color_str)
+    ao.bg_color, ao.frame_bg_color = get_background_colors((0, 32, 0), args.bg_color_str)
 
     #TODO: Add padding to args.
-    result.padding = get_opt_int(0, 'padding', settings)
+    ao.padding = get_opt_int(0, 'padding', settings)
 
-    result.out_file_name = get_opt_str(args.output_file, 'output_file', settings)
+    ao.out_file_name = get_opt_str(args.output_file, 'output_file', settings)
 
-    result.featured1 = get_opt_feat(get_option_entries('[featured-1]', file_text))
+    ao.featured1 = get_opt_feat(get_option_entries('[featured-1]', file_text))
 
-    result.featured2 = get_opt_feat(get_option_entries('[featured-2]', file_text))
+    ao.featured2 = get_opt_feat(get_option_entries('[featured-2]', file_text))
 
-    result.image_list = [i for i in args.images]
+    ao.image_list = [i for i in args.images]
 
-    result.image_list += [i.strip("'\"") for i in get_option_entries('[images]', file_text)]
+    ao.image_list += [i.strip("'\"") for i in get_option_entries('[images]', file_text)]
         
-    return result
+    return ao
 
 
 def get_arguments():

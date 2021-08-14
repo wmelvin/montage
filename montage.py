@@ -5,9 +5,74 @@ from PIL import Image
 from pathlib import Path
 
 
-app_version = '20210813.1'
+app_version = '20210814.1'
 
 app_title = f'montage.py - version {app_version}'
+
+
+class Options:
+
+    def __init__(self):
+        self.out_file_name = None
+        self.canvas_width = None
+        self.canvas_height = None
+        self.cols = None
+        self.rows = None
+        self.margin = None
+        self.padding = None
+        self.bg_color = None
+        self.frame_bg_color = None
+        self.featured1 = None
+        self.featured2 = None
+        self.image_list = []
+    
+    def canvas_size(self):
+        return (int(self.canvas_width), int(self.canvas_height))
+    
+
+def get_options(args):
+    result = Options()
+    
+    # result.canvas_width = args.canvas_width
+    # result.canvas_height = args.canvas_height
+
+    if args.settings_file is None:
+        file_text = ''
+    else:
+        p = Path(args.settings_file).expanduser().resolve()
+        # if not p.exists():
+        #     print(f"ERROR: File not found: {args.settings_file}")
+        #     return
+        with open(p, 'r') as f:
+            file_text = f.readlines()
+
+    
+    #  If file_text is empty, the defaults from args will be used.
+
+    settings = get_option_entries('[settings]', file_text)
+
+    result.canvas_width = get_opt_int(args.canvas_width, 'canvas_width', settings)
+    result.canvas_height = get_opt_int(args.canvas_height, 'canvas_height', settings)
+    result.cols = get_opt_int(args.cols, 'columns', settings)
+    result.rows = get_opt_int(args.rows, 'rows', settings)
+    result.margin = get_opt_int(args.margin, 'margin', settings)
+
+    result.bg_color, result.frame_bg_color = get_background_colors((0, 32, 0), args.bg_color_str)
+
+    #TODO: Add padding to args.
+    result.padding = get_opt_int(0, 'padding', settings)
+
+    result.out_file_name = get_opt_str(args.output_file, 'output_file', settings)
+
+    result.featured1 = get_opt_feat(get_option_entries('[featured-1]', file_text))
+
+    result.featured2 = get_opt_feat(get_option_entries('[featured-2]', file_text))
+
+    result.image_list = [i for i in args.images]
+
+    result.image_list += [i.strip("'\"") for i in get_option_entries('[images]', file_text)]
+        
+    return result
 
 
 def get_arguments():
@@ -65,12 +130,28 @@ def get_arguments():
         action = 'store',
         help = 'Name of output file.')
 
+    #TODO: Remove feature_width.
     ap.add_argument(
         '-f', '--feature-width',
         dest = 'feature_width',
         type = int,
         action = 'store',
         help = 'Featured image width.')
+
+    ### For now, make the featured-image(s) feature only available via the options file.
+    # ap.add_argument(
+    #     '-f', '--featured-1',
+    #     dest = 'feat_1',
+    #     type = str,
+    #     action = 'store',
+    #     help = 'Attributes for first featured image as (col, ncols, row, nrows).')
+
+    # ap.add_argument(
+    #     '-F', '--featured-2',
+    #     dest = 'feat_1',
+    #     type = str,
+    #     action = 'store',
+    #     help = 'Attributes for second featured image as (col, ncols, row, nrows).')
 
     ap.add_argument(
         '-b', '--background-rgb',
@@ -103,15 +184,12 @@ def get_option_entries(opt_section, opt_content):
     in_section = False
     for line in opt_content:
         s = line.strip()
-        if len(s) == 0:
-            in_section = False
-        else:
+        if (0 < len(s)) and not s.startswith('#'):
             if in_section:
-                # Handle new section w/o blank lines between.
+                # New section?
                 if s.startswith('['):
                     in_section = False
-                # Support whole-line comments identified by '#' (ignore them).
-                elif not s.startswith('#'):
+                else:
                     result.append(s)
             if s == opt_section:
                 in_section = True
@@ -135,6 +213,14 @@ def get_opt_int(default, opt_name, content):
         return int(s)
 
 
+def get_opt_feat(section_content):
+    col = get_opt_int(0, 'column', section_content)
+    ncols = get_opt_int(0, 'num_columns', section_content)
+    row = get_opt_int(0, 'row', section_content)
+    nrows = get_opt_int(0, 'num_rows', section_content)    
+    return (col, ncols, row, nrows)
+
+
 def get_options_from_file(file_name, args, image_list):
     p = Path(file_name).expanduser().resolve()
     if not p.exists():
@@ -151,7 +237,7 @@ def get_options_from_file(file_name, args, image_list):
     args.cols = get_opt_int(args.cols, 'columns', settings)
     args.rows = get_opt_int(args.rows, 'rows', settings)
     args.margin = get_opt_int(args.margin, 'margin', settings)
-    args.feature_width = get_opt_int(args.feature_width, 'feature_width', settings)
+    #args.feature_width = get_opt_int(args.feature_width, 'feature_width', settings)
     args.bg_color_str = get_opt_str(args.bg_color_str, 'background_rgb', settings)
     args.output_file = get_opt_str(args.output_file, 'output_file', settings)
 
@@ -214,12 +300,14 @@ def main():
 
     pics = [pic for pic in args.images]
 
+    opts = get_options(args)
+
+    print(opts.canvas_size())
+
     if args.settings_file is not None:
         get_options_from_file(args.settings_file, args, pics)
 
     (bg_color, frame_bg_color) = get_background_colors((0, 32, 0), args.bg_color_str)
-
-    file_name = args.output_file
 
     canvas_size = (args.canvas_width, args.canvas_height)
 
@@ -240,7 +328,7 @@ def main():
     if args.feature_width is None:
         feature_offset = 0
     else:
-        feature_offset = args.feature_width
+        feature_offset = abs(args.feature_width)
 
         feature_width = int(abs(args.feature_width) - args.margin)
         feature_height = int(args.canvas_height - (args.margin * 2))
@@ -272,9 +360,9 @@ def main():
 
             image.paste(frame, (x_offset, y_offset))
 
-    print(f"\nSaving '{file_name}'.")
+    print(f"\nSaving '{args.output_file}'.")
 
-    image.save(file_name)
+    image.save(args.output_file)
 
     print(f"\nDone ({app_title}).")
 

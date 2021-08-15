@@ -11,7 +11,6 @@ app_title = f'montage.py - version {app_version}'
 
 
 class AppOptions:
-
     def __init__(self):
         self.out_file_name = None
         self.canvas_width = None
@@ -26,9 +25,6 @@ class AppOptions:
         self.featured2 = None
         self.image_list = []
         self.placements = []
-
-        #TODO: Temporary stub
-        # self.feature_width = None
     
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
@@ -129,13 +125,6 @@ def get_arguments():
         action = 'store',
         help = 'Name of output file.')
 
-    # ap.add_argument(
-    #     '-f', '--feature-width',
-    #     dest = 'feature_width',
-    #     type = int,
-    #     action = 'store',
-    #     help = 'Featured image width.')
-
     ### For now, make the featured-image(s) feature only available via the options file.
     # ap.add_argument(
     #     '-f', '--featured-1',
@@ -227,35 +216,6 @@ def get_opt_feat(section_content):
     return (col, ncols, row, nrows)
 
 
-def get_options_from_file(file_name, args, image_list):
-    p = Path(file_name).expanduser().resolve()
-    if not p.exists():
-        print(f"ERROR: File not found: {file_name}")
-        return
-
-    with open(p, 'r') as f:
-        file_text = f.readlines()
-
-    settings = get_option_entries('[settings]', file_text)
-
-    args.canvas_width = get_opt_int(args.canvas_width, 'canvas_width', settings)
-    args.canvas_height = get_opt_int(args.canvas_height, 'canvas_height', settings)
-    args.cols = get_opt_int(args.cols, 'columns', settings)
-    args.rows = get_opt_int(args.rows, 'rows', settings)
-    args.margin = get_opt_int(args.margin, 'margin', settings)
-    #args.feature_width = get_opt_int(args.feature_width, 'feature_width', settings)
-    args.bg_color_str = get_opt_str(args.bg_color_str, 'background_rgb', settings)
-    args.output_file = get_opt_str(args.output_file, 'output_file', settings)
-
-    image_list += [x.strip("'\"") for x in get_option_entries('[images]', file_text)]
-
-
-# def get_scale_factor(pic_size, frame_size):
-#     w = frame_size[0] / pic_size[0]
-#     h = frame_size[1] / pic_size[1]
-#     return min(w, h)
-
-
 def get_size_and_placement(img_size, initial_placement):
     scale_w = initial_placement[2] / img_size[0]
     scale_h = initial_placement[3] / img_size[1]
@@ -275,14 +235,6 @@ def get_size_and_placement(img_size, initial_placement):
         initial_placement[1] + add_y
     )
     return ((size_width, size_height), new_placement)
-
-
-# def scale_image(img, target_size):
-#     scale_w = target_size[0] / img_size[0]
-#     scale_h = target_size[1] / img_size[1]
-#     scale_factor = min(scale_w, scale_h)
-
-
 
 
 def get_background_colors(default, arg_str):
@@ -319,8 +271,8 @@ def place_featured(opts: AppOptions, feat_attr, frame_size):
     if f_nrows and f_ncols:
         assert(0 < f_nrows)
         assert(0 < f_ncols)
-        x = (opts.margin + ((f_col - 1) * frame_size[0]))
-        y = (opts.margin + ((f_row - 1) * frame_size[1]))
+        x = (opts.margin + ((f_col - 1) * frame_size[0]) + opts.padding)
+        y = (opts.margin + ((f_row - 1) * frame_size[1]) + opts.padding)
         w = int((frame_size[0] * f_ncols) - (opts.padding * 2))
         h = int((frame_size[1] * f_nrows) - (opts.padding * 2))
         opts.add_placement(x, y, w, h)
@@ -344,30 +296,7 @@ def outside_featured(col_index, row_index, feat_1, feat_2):
 def main():
     print(f"\n{app_title}")
 
-    #args = get_arguments()
-
-    #pics = [pic for pic in args.images]
-
     opts = get_options(get_arguments())
-
-    #print(opts.canvas_size())
-
-    # if args.settings_file is not None:
-    #     get_options_from_file(args.settings_file, args, pics)
-
-    # (bg_color, frame_bg_color) = get_background_colors((0, 32, 0), args.bg_color_str)
-
-    # canvas_size = (args.canvas_width, args.canvas_height)
-
-    # if opts.feature_width is None:
-    #     use_width = opts.canvas_width
-    # else:
-    #     assert(abs(opts.feature_width) < (opts.canvas_width + (opts.margin * 2)))
-    #     use_width = opts.canvas_width - abs(opts.feature_width)
-
-    # frame_width = int((use_width / opts.cols) - (opts.margin + (opts.margin / opts.cols)))
-    # frame_height = int((opts.canvas_height / opts.rows) - (opts.margin + (opts.margin / opts.rows)))
-    # frame_size = (frame_width, frame_height)
 
     frame_w = int((opts.canvas_width - (opts.margin * 2)) / opts.cols)
     frame_h = int((opts.canvas_height - (opts.margin * 2)) / opts.rows)
@@ -375,7 +304,7 @@ def main():
 
     inner_w = int(frame_w - (opts.padding * 2))
     inner_h = int(frame_h - (opts.padding * 2))
-    inner_size = (inner_w, inner_h)
+    # inner_size = (inner_w, inner_h)
 
     image = Image.new('RGB', opts.canvas_size(), opts.bg_color)
 
@@ -383,16 +312,11 @@ def main():
 
     place_featured(opts, opts.featured2, frame_size)
 
-
     for row in range(0, opts.rows):
         for col in range(0, opts.cols):
             if outside_featured(col, row, opts.featured1, opts.featured2):
                 x = (opts.margin + (col * frame_w) + opts.padding)
                 y = (opts.margin + (row * frame_h) + opts.padding)
-                #frame = Image.new('RGB', frame_size, frame_bg(col, row, 0))
-                #inner = Image.new('RGB', inner_size, frame_bg(col, row, 1))
-                #frame.paste(inner, (padding, padding))
-                #image.paste(frame, (x, y))
                 opts.add_placement(x, y, inner_w, inner_h)
 
     i = 0
@@ -403,45 +327,6 @@ def main():
             new_size, new_placement =  get_size_and_placement(img.size, p)
             img = img.resize(new_size)            
             image.paste(img, new_placement)
-
-
-
-    # pic_index = 0
-
-    # if opts.feature_width is None:
-    #     feature_offset = 0
-    # else:
-    #     feature_offset = abs(opts.feature_width)
-
-    #     feature_width = int(abs(opts.feature_width) - opts.margin)
-    #     feature_height = int(opts.canvas_height - (opts.margin * 2))
-        
-    #     feature_size = (feature_width, feature_height)
-    #     frame = Image.new('RGB', feature_size, opts.frame_bg_color)
-    #     if opts.feature_width > 0:
-    #         pic = Image.open(opts.image_list[pic_index])
-    #         pic_index += 1
-    #         (new_size, placement) = get_size_and_placement(pic.size, feature_size)                
-    #         pic = pic.resize(new_size)            
-    #         frame.paste(pic, placement)
-
-    #     image.paste(frame, (opts.margin, opts.margin))
-
-    # for y in range(0, opts.rows):
-    #     y_offset = int(opts.margin + (y * frame_height) + (y * opts.margin))
-    #     for x in range(0, opts.cols):
-    #         x_offset = int(feature_offset + opts.margin + (x * frame_width) + (x * opts.margin))
-
-    #         frame = Image.new('RGB', frame_size, opts.frame_bg_color)
-
-    #         if pic_index < len(opts.image_list):        
-    #             pic = Image.open(opts.image_list[pic_index])
-    #             pic_index += 1
-    #             (new_size, placement) = get_size_and_placement(pic.size, frame_size)
-    #             pic = pic.resize(new_size)
-    #             frame.paste(pic, placement)
-
-    #         image.paste(frame, (x_offset, y_offset))
 
     print(f"\nSaving '{opts.out_file_name}'.")
 

@@ -28,7 +28,7 @@ class AppOptions:
         self.placements = []
 
         #TODO: Temporary stub
-        self.feature_width = None
+        # self.feature_width = None
     
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
@@ -63,29 +63,21 @@ def get_options(args):
     ao.cols = get_opt_int(args.cols, 'columns', settings)
     ao.rows = get_opt_int(args.rows, 'rows', settings)
     ao.margin = get_opt_int(args.margin, 'margin', settings)
-
     ao.bg_color, ao.frame_bg_color = get_background_colors((0, 32, 0), args.bg_color_str)
-
-    #TODO: Add padding to args.
-    ao.padding = get_opt_int(0, 'padding', settings)
-
+    ao.padding = get_opt_int(args.padding, 'padding', settings)
     ao.out_file_name = get_opt_str(args.output_file, 'output_file', settings)
-
     ao.featured1 = get_opt_feat(get_option_entries('[featured-1]', file_text))
-
     ao.featured2 = get_opt_feat(get_option_entries('[featured-2]', file_text))
-
     ao.image_list = [i for i in args.images]
-
     ao.image_list += [i.strip("'\"") for i in get_option_entries('[images]', file_text)]
-        
     return ao
 
 
 def get_arguments():
     default_canvas_width = 640
     default_canvas_height = 480
-    default_margin = 20
+    default_margin = 10
+    default_padding = 20
     default_file_name = 'output.jpg'
 
     ap = argparse.ArgumentParser(
@@ -137,13 +129,12 @@ def get_arguments():
         action = 'store',
         help = 'Name of output file.')
 
-    #TODO: Remove feature_width.
-    ap.add_argument(
-        '-f', '--feature-width',
-        dest = 'feature_width',
-        type = int,
-        action = 'store',
-        help = 'Featured image width.')
+    # ap.add_argument(
+    #     '-f', '--feature-width',
+    #     dest = 'feature_width',
+    #     type = int,
+    #     action = 'store',
+    #     help = 'Featured image width.')
 
     ### For now, make the featured-image(s) feature only available via the options file.
     # ap.add_argument(
@@ -176,6 +167,14 @@ def get_arguments():
         default = default_margin,
         action = 'store',
         help = 'Margin in pixels.')
+
+    ap.add_argument(
+        '-p', '--padding',
+        dest = 'padding',
+        type = int,
+        default = default_padding,
+        action = 'store',
+        help = 'Padding in pixels.')
 
     ap.add_argument(
         '-s', '--settings-file',
@@ -251,25 +250,39 @@ def get_options_from_file(file_name, args, image_list):
     image_list += [x.strip("'\"") for x in get_option_entries('[images]', file_text)]
 
 
-def get_scale_factor(pic_size, frame_size):
-    w = frame_size[0] / pic_size[0]
-    h = frame_size[1] / pic_size[1]
-    return min(w, h)
+# def get_scale_factor(pic_size, frame_size):
+#     w = frame_size[0] / pic_size[0]
+#     h = frame_size[1] / pic_size[1]
+#     return min(w, h)
 
 
-def get_size_and_placement(pic_size, target_size):
-    scale_factor = get_scale_factor(pic_size, target_size)
-    size_width = int(pic_size[0] * scale_factor)
-    size_height = int(pic_size[1] * scale_factor)
-    if size_width < target_size[0]:
-        place_x = int((target_size[0] - size_width) / 2)
+def get_size_and_placement(img_size, initial_placement):
+    scale_w = initial_placement[2] / img_size[0]
+    scale_h = initial_placement[3] / img_size[1]
+    scale_factor = min(scale_w, scale_h)
+    size_width = int(img_size[0] * scale_factor)
+    size_height = int(img_size[1] * scale_factor)
+    if size_width < initial_placement[2]:
+        add_x = int((initial_placement[2] - size_width) / 2)
     else:
-        place_x = 0
-    if size_height < target_size[1]:
-        place_y = int((target_size[1] - size_height) / 2)
+        add_x = 0
+    if size_height < initial_placement[3]:
+        add_y = int((initial_placement[3] - size_height) / 2)
     else:
-        place_y = 0    
-    return ((size_width, size_height), (place_x, place_y))
+        add_y = 0
+    new_placement = (
+        initial_placement[0] + add_x, 
+        initial_placement[1] + add_y
+    )
+    return ((size_width, size_height), new_placement)
+
+
+# def scale_image(img, target_size):
+#     scale_w = target_size[0] / img_size[0]
+#     scale_h = target_size[1] / img_size[1]
+#     scale_factor = min(scale_w, scale_h)
+
+
 
 
 def get_background_colors(default, arg_str):
@@ -374,15 +387,24 @@ def main():
     for row in range(0, opts.rows):
         for col in range(0, opts.cols):
             if outside_featured(col, row, opts.featured1, opts.featured2):
-                x = (opts.margin + (col * frame_w))
-                y = (opts.margin + (row * frame_h))
+                x = (opts.margin + (col * frame_w) + opts.padding)
+                y = (opts.margin + (row * frame_h) + opts.padding)
                 #frame = Image.new('RGB', frame_size, frame_bg(col, row, 0))
                 #inner = Image.new('RGB', inner_size, frame_bg(col, row, 1))
                 #frame.paste(inner, (padding, padding))
                 #image.paste(frame, (x, y))
                 opts.add_placement(x, y, inner_w, inner_h)
 
-    # NEXT ... place images
+    i = 0
+    for p in opts.placements:
+        if i < len(opts.image_list):
+            img = Image.open(opts.image_list[i])
+            i += 1
+            new_size, new_placement =  get_size_and_placement(img.size, p)
+            img = img.resize(new_size)            
+            image.paste(img, new_placement)
+
+
 
     # pic_index = 0
 

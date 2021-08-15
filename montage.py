@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 import argparse
-from PIL import Image
+from PIL import Image, ImageFilter
 from pathlib import Path
 
 
-app_version = '20210814.1'
+app_version = '20210815.1'
 
 app_title = f'montage.py - version {app_version}'
 
@@ -25,12 +25,23 @@ class AppOptions:
         self.featured2 = None
         self.image_list = []
         self.placements = []
+        self.bg_file = None
+        
+        #TODO: Add options. Defaults for now.
+        self.bg_alpha = 64
+        self.bg_blur = 3
     
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
 
     def add_placement(self, x, y, w, h):
         self.placements.append((x, y, w, h))
+
+    def has_background_image(self):
+        return (self.bg_file is not None) and (0 < len(self.bg_file))
+
+    def background_mask_rgba(self):
+        return (0, 0, 0, self.bg_alpha)
     
 
 def get_options(args):
@@ -60,6 +71,7 @@ def get_options(args):
     ao.rows = get_opt_int(args.rows, 'rows', settings)
     ao.margin = get_opt_int(args.margin, 'margin', settings)
     ao.bg_color, ao.frame_bg_color = get_background_colors((0, 32, 0), args.bg_color_str)
+    ao.bg_file = get_opt_str(args.bg_file, 'bg_file', settings)
     ao.padding = get_opt_int(args.padding, 'padding', settings)
     ao.out_file_name = get_opt_str(args.output_file, 'output_file', settings)
     ao.featured1 = get_opt_feat(get_option_entries('[featured-1]', file_text))
@@ -170,6 +182,12 @@ def get_arguments():
         dest = 'settings_file',
         action = 'store',
         help = 'Name of settings file.')
+
+    ap.add_argument(
+        '-g', '--background-image',
+        dest = 'bg_file',
+        action = 'store',
+        help = 'Name of image file to use as the background image.')
 
     return ap.parse_args()
 
@@ -307,6 +325,13 @@ def main():
     # inner_size = (inner_w, inner_h)
 
     image = Image.new('RGB', opts.canvas_size(), opts.bg_color)
+
+    if opts.has_background_image():
+        bg_image = Image.open(opts.bg_file)
+        bg_image = bg_image.resize(opts.canvas_size())
+        bg_image = bg_image.filter(ImageFilter.BoxBlur(opts.bg_blur))
+        bg_mask = Image.new('RGBA', opts.canvas_size(), opts.background_mask_rgba())
+        image.paste(bg_image, (0, 0), mask=bg_mask)
 
     place_featured(opts, opts.featured1, frame_size)
 

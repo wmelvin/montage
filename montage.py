@@ -26,10 +26,8 @@ class AppOptions:
         self.image_list = []
         self.placements = []
         self.bg_file = None
-        
-        #TODO: Add options. Defaults for now.
-        self.bg_alpha = 64
-        self.bg_blur = 3
+        self.bg_alpha = None
+        self.bg_blur = None
     
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
@@ -70,14 +68,20 @@ def get_options(args):
     ao.cols = get_opt_int(args.cols, 'columns', settings)
     ao.rows = get_opt_int(args.rows, 'rows', settings)
     ao.margin = get_opt_int(args.margin, 'margin', settings)
-    ao.bg_color, ao.frame_bg_color = get_background_colors((0, 32, 0), args.bg_color_str)
-    ao.bg_file = get_opt_str(args.bg_file, 'bg_file', settings)
     ao.padding = get_opt_int(args.padding, 'padding', settings)
     ao.out_file_name = get_opt_str(args.output_file, 'output_file', settings)
+    ao.bg_color, ao.frame_bg_color = get_background_colors((0, 32, 0), args.bg_color_str)
+    ao.bg_file = get_opt_str(args.bg_file, 'bg_file', settings)
+    ao.bg_alpha = get_opt_int(args.bg_alpha, 'bg_alpha', settings)
+    ao.bg_blur = get_opt_int(args.bg_blur, 'bg_blur', settings)
+    
     ao.featured1 = get_opt_feat(get_option_entries('[featured-1]', file_text))
     ao.featured2 = get_opt_feat(get_option_entries('[featured-2]', file_text))
+    
     ao.image_list = [i for i in args.images]
+    
     ao.image_list += [i.strip("'\"") for i in get_option_entries('[images]', file_text)]
+    
     return ao
 
 
@@ -86,6 +90,8 @@ def get_arguments():
     default_canvas_height = 480
     default_margin = 10
     default_padding = 20
+    default_bg_alpha = 64
+    default_bg_blur = 3
     default_file_name = 'output.jpg'
 
     ap = argparse.ArgumentParser(
@@ -137,7 +143,6 @@ def get_arguments():
         action = 'store',
         help = 'Name of output file.')
 
-    ### For now, make the featured-image(s) feature only available via the options file.
     # ap.add_argument(
     #     '-f', '--featured-1',
     #     dest = 'feat_1',
@@ -151,15 +156,6 @@ def get_arguments():
     #     type = str,
     #     action = 'store',
     #     help = 'Attributes for second featured image as (col, ncols, row, nrows).')
-
-    ap.add_argument(
-        '-b', '--background-rgb',
-        dest = 'bg_color_str',
-        type=str, 
-        action = 'store',
-        help = 'Background color as red,green,blue. '
-        + 'Also accepts r1,g1,b1,r2,g2,b2 where 2nd set is '
-        + 'the background color for the innder frames.')
 
     ap.add_argument(
         '-m', '--margin',
@@ -184,10 +180,35 @@ def get_arguments():
         help = 'Name of settings file.')
 
     ap.add_argument(
+        '-b', '--background-rgb',
+        dest = 'bg_color_str',
+        type=str, 
+        action = 'store',
+        help = 'Background color as red,green,blue. '
+        + 'Also accepts r1,g1,b1,r2,g2,b2 where 2nd set is '
+        + 'the background color for the innder frames.')
+
+    ap.add_argument(
         '-g', '--background-image',
         dest = 'bg_file',
         action = 'store',
         help = 'Name of image file to use as the background image.')
+
+    ap.add_argument(
+        '--background-alpha',
+        dest = 'bg_alpha',
+        type = int,
+        default = default_bg_alpha,
+        action = 'store',
+        help = 'Alpha (transparency) value for background image (0..255).')
+
+    ap.add_argument(
+        '--background-blur',
+        dest = 'bg_blur',
+        type = int,
+        default = default_bg_blur,
+        action = 'store',
+        help = 'Blur radius for background image (0 = none).')
 
     return ap.parse_args()
 

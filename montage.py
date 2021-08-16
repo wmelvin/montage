@@ -28,9 +28,8 @@ class AppOptions:
         self.margin = None
         self.padding = None
         self.bg_color = None
-        # self.frame_bg_color = None
-        self.featured1 = None
-        self.featured2 = None
+        self.feature1 = None
+        self.feature2 = None
         self.image_list = []
         self.placements = []
         self.bg_file = None
@@ -66,6 +65,7 @@ class AppOptions:
         if self.write_opts:
             p = Path(self.image_file_name())
             file_name = str(Path('{0}_{1}'.format(p.with_suffix(''), 'options')).with_suffix('.txt'))
+            print(f"\nWriting options to '{file_name}'\n")
             with open(file_name, 'w') as f:
                 f.write("\n[settings]\n")
                 f.write(f"output_file='{self.output_file_name}'\n")
@@ -82,21 +82,21 @@ class AppOptions:
                 f.write(f"shuffle={self.shuffle}\n")
                 f.write(f"stamp={self.stamp}\n")
 
-                if self.featured1.ncols:
-                    f.write("\n[featured-1]\n")
-                    f.write(f"file='{self.featured1.file_name}'\n")
-                    f.write(f"column={self.featured1.col}\n")
-                    f.write(f"row={self.featured1.row}\n")
-                    f.write(f"num_columns={self.featured1.ncols}\n")
-                    f.write(f"num_rows={self.featured1.nrows}\n")
+                if self.feature1.ncols:
+                    f.write("\n[feature-1]\n")
+                    f.write(f"file='{self.feature1.file_name}'\n")
+                    f.write(f"column={self.feature1.col}\n")
+                    f.write(f"row={self.feature1.row}\n")
+                    f.write(f"num_columns={self.feature1.ncols}\n")
+                    f.write(f"num_rows={self.feature1.nrows}\n")
                 
-                if self.featured2.ncols:
-                    f.write("\n[featured-2]\n")
-                    f.write(f"file='{self.featured2.file_name}'\n")
-                    f.write(f"column={self.featured2.col}\n")
-                    f.write(f"row={self.featured2.row}\n")
-                    f.write(f"num_columns={self.featured2.ncols}\n")
-                    f.write(f"num_rows={self.featured2.nrows}\n")
+                if self.feature2.ncols:
+                    f.write("\n[feature-2]\n")
+                    f.write(f"file='{self.feature2.file_name}'\n")
+                    f.write(f"column={self.feature2.col}\n")
+                    f.write(f"row={self.feature2.row}\n")
+                    f.write(f"num_columns={self.feature2.ncols}\n")
+                    f.write(f"num_rows={self.feature2.nrows}\n")
 
                 f.write("\n[images]\n")
                 for img in self.image_list:
@@ -142,10 +142,15 @@ def get_options(args):
     ao.shuffle = get_opt_bool(args.shuffle, 'shuffle', settings)
     ao.stamp = get_opt_bool(args.stamp, 'stamp', settings)
     ao.write_opts = get_opt_bool(args.write_opts, 'write_opts', settings)
+    
+    ao.feature1 = get_feature_args(args.feature_1)
+    if ao.feature1.ncols == 0:
+        ao.feature1 = get_opt_feat(get_option_entries('[feature-1]', file_text))
 
-    ao.featured1 = get_opt_feat(get_option_entries('[featured-1]', file_text))
-    ao.featured2 = get_opt_feat(get_option_entries('[featured-2]', file_text))
-
+    ao.feature2 = get_feature_args(args.feature_2)
+    if ao.feature2.ncols == 0:
+        ao.feature2 = get_opt_feat(get_option_entries('[feature-2]', file_text))
+        
     ao.image_list = [i for i in args.images]
 
     ao.image_list += [i.strip("'\"") for i in get_option_entries('[images]', file_text)]
@@ -173,20 +178,11 @@ def get_arguments():
         help = 'Images files to include in the montage image. Multiple files can be specified.')
 
     ap.add_argument(
-        '-c', '--columns',
-        dest = 'cols',
-        type = int,
-        default = 2,
+        '-o', '--output-file',
+        dest = 'output_file',
+        default = default_file_name,
         action = 'store',
-        help = 'Number of columns.')
-
-    ap.add_argument(
-        '-r', '--rows',
-        dest = 'rows',
-        type = int,
-        default = 2,
-        action = 'store',
-        help = 'Number of rows.')
+        help = 'Name of output file.')
 
     ap.add_argument(
         '-x', '--canvas-width',
@@ -205,25 +201,20 @@ def get_arguments():
         help = 'Canvas height in pixels.')
 
     ap.add_argument(
-        '-o', '--output-file',
-        dest = 'output_file',
-        default = default_file_name,
+        '-c', '--columns',
+        dest = 'cols',
+        type = int,
+        default = 2,
         action = 'store',
-        help = 'Name of output file.')
+        help = 'Number of columns.')
 
-    # ap.add_argument(
-    #     '-f', '--featured-1',
-    #     dest = 'feat_1',
-    #     type = str,
-    #     action = 'store',
-    #     help = 'Attributes for first featured image as (col, ncols, row, nrows).')
-
-    # ap.add_argument(
-    #     '-F', '--featured-2',
-    #     dest = 'feat_1',
-    #     type = str,
-    #     action = 'store',
-    #     help = 'Attributes for second featured image as (col, ncols, row, nrows).')
+    ap.add_argument(
+        '-r', '--rows',
+        dest = 'rows',
+        type = int,
+        default = 2,
+        action = 'store',
+        help = 'Number of rows.')
 
     ap.add_argument(
         '-m', '--margin',
@@ -240,12 +231,6 @@ def get_arguments():
         default = default_padding,
         action = 'store',
         help = 'Padding in pixels.')
-
-    ap.add_argument(
-        '-s', '--settings-file',
-        dest = 'settings_file',
-        action = 'store',
-        help = 'Name of settings file.')
 
     ap.add_argument(
         '-b', '--background-rgb',
@@ -279,6 +264,20 @@ def get_arguments():
         help = 'Blur radius for background image (0 = none).')
 
     ap.add_argument(
+        '--feature-1',
+        dest = 'feature_1',
+        type = str,
+        action = 'store',
+        help = 'Attributes for first featured image as (col, ncols, row, nrows, file_name).')
+
+    ap.add_argument(
+        '--feature-2',
+        dest = 'feature_2',
+        type = str,
+        action = 'store',
+        help = 'Attributes for second featured image as (col, ncols, row, nrows, file_name).')
+
+    ap.add_argument(
         '--shuffle',
         dest = 'shuffle',
         action = 'store_true',
@@ -289,6 +288,12 @@ def get_arguments():
         dest = 'stamp',
         action = 'store_true',
         help = 'Add a date_time stamp to the output file name.')
+
+    ap.add_argument(
+        '-s', '--settings-file',
+        dest = 'settings_file',
+        action = 'store',
+        help = 'Name of settings file.')
 
     ap.add_argument(
         '--write-opts',
@@ -346,13 +351,35 @@ def get_opt_bool(default, opt_name, content):
     return s in ('t', 'y', '1')
 
 
+def get_feature_args(feat_args):
+    if feat_args is None:
+        return FeatureImage(0, 0, 0, 0, '')
+
+    a = feat_args.strip('()').split(',')
+
+    if len(a) != 5:
+        print("WARNING: Ignoring invalid feature attributes. ",
+            "Expected five values separated by commas."
+        )
+        return FeatureImage(0, 0, 0, 0, '')
+
+    if any(not x.strip().isdigit() for x in a[:-1]):
+        print("WARNING: Ignoring invalid feature attributes. ",
+            "Expected first four numeric values are numeric."
+        )
+        return FeatureImage(0, 0, 0, 0, '')
+
+    fn = a[4].strip("\\'\" ")
+
+    return FeatureImage(int(a[0]), int(a[1]), int(a[2]), int(a[3]), fn)
+
+
 def get_opt_feat(section_content):
     col = get_opt_int(0, 'column', section_content)
     ncols = get_opt_int(0, 'num_columns', section_content)
     row = get_opt_int(0, 'row', section_content)
     nrows = get_opt_int(0, 'num_rows', section_content)
     file_name = get_opt_str('', 'file', section_content)
-    # return (col, ncols, row, nrows, file_name)    
     return FeatureImage(col, ncols, row, nrows, file_name)
 
 
@@ -408,7 +435,7 @@ def get_background_rgb(default, arg_str):
         return default
 
 
-def place_featured(opts: AppOptions, feat_attr, frame_size):
+def place_feature(opts: AppOptions, feat_attr, frame_size):
     if feat_attr.nrows and feat_attr.ncols:
         assert(0 < feat_attr.nrows)
         assert(0 < feat_attr.ncols)
@@ -427,7 +454,7 @@ def outside_feat(col_index, row_index, feat_attr):
     return True
 
 
-def outside_featured(col_index, row_index, feat_1, feat_2):
+def outside_feature(col_index, row_index, feat_1, feat_2):
     a = outside_feat(col_index, row_index, feat_1)
     b = outside_feat(col_index, row_index, feat_2)
     return a and b
@@ -462,7 +489,7 @@ def get_crop_box(current_size, target_size):
 
 
 def main():
-    print(f"\n{app_title}")
+    print(f"\n{app_title}\n")
 
     opts = get_options(get_arguments())
 
@@ -490,16 +517,16 @@ def main():
 
         image.paste(bg_image, (0, 0), mask=bg_mask)
 
-    place_featured(opts, opts.featured1, frame_size)
+    place_feature(opts, opts.feature1, frame_size)
 
-    place_featured(opts, opts.featured2, frame_size)
+    place_feature(opts, opts.feature2, frame_size)
 
     if opts.shuffle:
         opts.shuffle_images()
 
     for row in range(0, opts.rows):
         for col in range(0, opts.cols):
-            if outside_featured(col, row, opts.featured1, opts.featured2):
+            if outside_feature(col, row, opts.feature1, opts.feature2):
                 x = (opts.margin + (col * frame_w) + opts.padding)
                 y = (opts.margin + (row * frame_h) + opts.padding)
                 opts.add_placement(x, y, inner_w, inner_h)
@@ -517,7 +544,7 @@ def main():
             img = img.resize(new_size)
             image.paste(img, new_position)
 
-    print(f"\nSaving '{opts.image_file_name()}'.")
+    print(f"\nCreating image '{opts.image_file_name()}'")
 
     image.save(opts.image_file_name())
 

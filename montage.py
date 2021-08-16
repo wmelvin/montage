@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 import argparse
+import random
 from PIL import Image, ImageFilter
 from pathlib import Path
 
 
-app_version = '20210815.1'
+app_version = '20210816.1'
 
 app_title = f'montage.py - version {app_version}'
 
@@ -28,6 +29,7 @@ class AppOptions:
         self.bg_file = None
         self.bg_alpha = None
         self.bg_blur = None
+        self.shuffle = False
     
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
@@ -40,6 +42,9 @@ class AppOptions:
 
     def background_mask_rgba(self):
         return (0, 0, 0, self.bg_alpha)
+
+    def shuffle_images(self):
+        random.shuffle(self.image_list)
     
 
 def get_options(args):
@@ -77,6 +82,8 @@ def get_options(args):
     ao.bg_file = get_opt_str(args.bg_file, 'bg_file', settings)
     ao.bg_alpha = get_opt_int(args.bg_alpha, 'bg_alpha', settings)
     ao.bg_blur = get_opt_int(args.bg_blur, 'bg_blur', settings)
+
+    ao.shuffle = get_opt_bool(args.shuffle, 'shuffle', settings)
     
     ao.featured1 = get_opt_feat(get_option_entries('[featured-1]', file_text))
     ao.featured2 = get_opt_feat(get_option_entries('[featured-2]', file_text))
@@ -213,6 +220,12 @@ def get_arguments():
         action = 'store',
         help = 'Blur radius for background image (0 = none).')
 
+    ap.add_argument(
+        '--shuffle',
+        dest = 'shuffle',
+        action = 'store_true',
+        help = 'Shuffle the list of images (random order).')
+
     return ap.parse_args()
 
 
@@ -248,6 +261,17 @@ def get_opt_int(default, opt_name, content):
         return default
     else:
         return int(s)
+
+
+def get_opt_bool(default, opt_name, content):
+    s = get_opt_str(None, opt_name, content) 
+    if (s is None) or (len(s) == 0):
+        return default
+    s = s[0].lower()
+    #  The values 'True', 'Yes', 'Y', and '1' are considered True.
+    #  Only the first character is checked, so any value starting
+    #  with one of those characters is taken as True.
+    return s in ('t', 'y', '1')
 
 
 def get_opt_feat(section_content):
@@ -339,7 +363,7 @@ def get_new_size_zoom(current_size, target_size):
     scale_w = target_size[0] / current_size[0]
     scale_h = target_size[1] / current_size[1]
     scale_by = max(scale_w, scale_h)
-    return (int(current_size[0] * scale_by), int(current_size[0] * scale_by))
+    return (int(current_size[0] * scale_by), int(current_size[1] * scale_by))
 
 
 def get_crop_box(current_size, target_size):
@@ -363,7 +387,6 @@ def get_crop_box(current_size, target_size):
     return (x1, y1, x2, y2)
 
 
-
 def main():
     print(f"\n{app_title}")
 
@@ -375,7 +398,6 @@ def main():
 
     inner_w = int(frame_w - (opts.padding * 2))
     inner_h = int(frame_h - (opts.padding * 2))
-    # inner_size = (inner_w, inner_h)
 
     image = Image.new('RGB', opts.canvas_size(), opts.bg_color)
 
@@ -388,14 +410,18 @@ def main():
         crop_box = get_crop_box(bg_image.size, opts.canvas_size())
         bg_image = bg_image.crop(crop_box)
 
-
         bg_image = bg_image.filter(ImageFilter.BoxBlur(opts.bg_blur))
+
         bg_mask = Image.new('RGBA', opts.canvas_size(), opts.background_mask_rgba())
+
         image.paste(bg_image, (0, 0), mask=bg_mask)
 
     place_featured(opts, opts.featured1, frame_size)
 
     place_featured(opts, opts.featured2, frame_size)
+
+    if opts.shuffle:
+        opts.shuffle_images()
 
     for row in range(0, opts.rows):
         for col in range(0, opts.cols):

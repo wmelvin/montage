@@ -2,6 +2,7 @@
 
 import argparse
 import random
+from collections import namedtuple
 from datetime import date, datetime
 from PIL import Image, ImageFilter
 from pathlib import Path
@@ -10,6 +11,9 @@ from pathlib import Path
 app_version = '20210816.1'
 
 app_title = f'montage.py - version {app_version}'
+
+
+FeatAttr = namedtuple('FeatAttr', 'col, ncols, row, nrows, file_name')
 
 
 class AppOptions:
@@ -38,8 +42,8 @@ class AppOptions:
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
 
-    def add_placement(self, x, y, w, h):
-        self.placements.append((x, y, w, h))
+    def add_placement(self, x, y, w, h, file_name=''):
+        self.placements.append((x, y, w, h, file_name))
 
     def has_background_image(self):
         return (self.bg_file is not None) and (0 < len(self.bg_file))
@@ -76,21 +80,21 @@ class AppOptions:
                 f.write(f"shuffle={self.shuffle}\n")
                 f.write(f"stamp={self.stamp}\n")
 
-                f_col, f_ncols, f_row, f_nrows = self.featured1
-                if f_ncols and f_nrows:
+                if self.featured1.ncols:
                     f.write("\n[featured-1]\n")
-                    f.write(f"column={f_col}\n")
-                    f.write(f"row={f_row}\n")
-                    f.write(f"num_columns={f_ncols}\n")
-                    f.write(f"num_rows={f_nrows}\n")
+                    f.write(f"file='{self.featured1.file_name}'\n")
+                    f.write(f"column={self.featured1.col}\n")
+                    f.write(f"row={self.featured1.row}\n")
+                    f.write(f"num_columns={self.featured1.ncols}\n")
+                    f.write(f"num_rows={self.featured1.nrows}\n")
                 
-                f_col, f_ncols, f_row, f_nrows = self.featured2
-                if f_ncols and f_nrows:
+                if self.featured2.ncols:
                     f.write("\n[featured-2]\n")
-                    f.write(f"column={f_col}\n")
-                    f.write(f"row={f_row}\n")
-                    f.write(f"num_columns={f_ncols}\n")
-                    f.write(f"num_rows={f_nrows}\n")
+                    f.write(f"file='{self.featured2.file_name}'\n")
+                    f.write(f"column={self.featured2.col}\n")
+                    f.write(f"row={self.featured2.row}\n")
+                    f.write(f"num_columns={self.featured2.ncols}\n")
+                    f.write(f"num_rows={self.featured2.nrows}\n")
 
                 f.write("\n[images]\n")
                 for img in self.image_list:
@@ -345,7 +349,9 @@ def get_opt_feat(section_content):
     ncols = get_opt_int(0, 'num_columns', section_content)
     row = get_opt_int(0, 'row', section_content)
     nrows = get_opt_int(0, 'num_rows', section_content)
-    return (col, ncols, row, nrows)
+    file_name = get_opt_str('', 'file', section_content)
+    # return (col, ncols, row, nrows, file_name)    
+    return FeatAttr(col, ncols, row, nrows, file_name)
 
 
 def get_size_and_placement(img_size, initial_placement):
@@ -401,23 +407,20 @@ def get_background_rgb(default, arg_str):
 
 
 def place_featured(opts: AppOptions, feat_attr, frame_size):
-    f_col, f_ncols, f_row, f_nrows = feat_attr
-
-    if f_nrows and f_ncols:
-        assert(0 < f_nrows)
-        assert(0 < f_ncols)
-        x = (opts.margin + ((f_col - 1) * frame_size[0]) + opts.padding)
-        y = (opts.margin + ((f_row - 1) * frame_size[1]) + opts.padding)
-        w = int((frame_size[0] * f_ncols) - (opts.padding * 2))
-        h = int((frame_size[1] * f_nrows) - (opts.padding * 2))
-        opts.add_placement(x, y, w, h)
+    if feat_attr.nrows and feat_attr.ncols:
+        assert(0 < feat_attr.nrows)
+        assert(0 < feat_attr.ncols)
+        x = (opts.margin + ((feat_attr.col - 1) * frame_size[0]) + opts.padding)
+        y = (opts.margin + ((feat_attr.row - 1) * frame_size[1]) + opts.padding)
+        w = int((frame_size[0] * feat_attr.ncols) - (opts.padding * 2))
+        h = int((frame_size[1] * feat_attr.nrows) - (opts.padding * 2))
+        opts.add_placement(x, y, w, h, feat_attr.file_name)
 
 
 def outside_feat(col_index, row_index, feat_attr):
-    f_col, f_ncols, f_row, f_nrows = feat_attr
-    if f_nrows and f_ncols:
-        a = (col_index + 1) in range(f_col, (f_col + f_ncols))
-        b = (row_index + 1) in range(f_row, (f_row + f_nrows))
+    if feat_attr.nrows and feat_attr.ncols:
+        a = (col_index + 1) in range(feat_attr.col, (feat_attr.col + feat_attr.ncols))
+        b = (row_index + 1) in range(feat_attr.row, (feat_attr.row + feat_attr.nrows))
         return not (a and b)
     return True
 
@@ -502,8 +505,12 @@ def main():
     i = 0
     for p in opts.placements:
         if i < len(opts.image_list):
-            img = Image.open(opts.image_list[i])
-            i += 1
+            if len(p[4]) == 0:
+                image_name = opts.image_list[i]
+                i += 1
+            else:
+                image_name = p[4]            
+            img = Image.open(image_name)
             new_size, new_placement =  get_size_and_placement(img.size, p)
             img = img.resize(new_size)
             image.paste(img, new_placement)

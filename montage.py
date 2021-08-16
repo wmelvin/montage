@@ -22,7 +22,7 @@ class AppOptions:
         self.margin = None
         self.padding = None
         self.bg_color = None
-        self.frame_bg_color = None
+        # self.frame_bg_color = None
         self.featured1 = None
         self.featured2 = None
         self.image_list = []
@@ -61,7 +61,7 @@ class AppOptions:
             p = Path(self.image_file_name())
             file_name = str(Path('{0}_{1}'.format(p.with_suffix(''), 'options')).with_suffix('.txt'))
             with open(file_name, 'w') as f:
-                f.write("[settings]\n")
+                f.write("\n[settings]\n")
                 f.write(f"output_file='{self.output_file_name}'\n")
                 f.write(f"canvas_width={self.canvas_width}\n")
                 f.write(f"canvas_height={self.canvas_height}\n")
@@ -69,17 +69,28 @@ class AppOptions:
                 f.write(f"rows={self.rows}\n")
                 f.write(f"margin={self.margin}\n")
                 f.write(f"padding={self.padding}\n")
-                f.write(f"background_rgb={self.bg_color}\n")
-        # self.frame_bg_color
-        # self.featured1 = None
-        # self.featured2 = None
-        # self.image_list = []
-        # self.placements = []
-        # self.bg_file = None
+                f.write(f"background_rgb={self.bg_color[0]},{self.bg_color[1]},{self.bg_color[2]}\n")
+                f.write(f"bg_file='{self.bg_file}'\n")
                 f.write(f"bg_alpha={self.bg_alpha}\n")
                 f.write(f"bg_blur={self.bg_blur}\n")
                 f.write(f"shuffle={self.shuffle}\n")
                 f.write(f"stamp={self.stamp}\n")
+
+                f_col, f_ncols, f_row, f_nrows = self.featured1
+                if f_ncols and f_nrows:
+                    f.write("\n[featured-1]\n")
+                    f.write(f"column={f_col}\n")
+                    f.write(f"row={f_row}\n")
+                    f.write(f"num_columns={f_ncols}\n")
+                    f.write(f"num_rows={f_nrows}\n")
+                
+                f_col, f_ncols, f_row, f_nrows = self.featured2
+                if f_ncols and f_nrows:
+                    f.write("\n[featured-2]\n")
+                    f.write(f"column={f_col}\n")
+                    f.write(f"row={f_row}\n")
+                    f.write(f"num_columns={f_ncols}\n")
+                    f.write(f"num_rows={f_nrows}\n")
 
                 f.write("\n[images]\n")
                 for img in self.image_list:
@@ -116,7 +127,7 @@ def get_options(args):
     ao.padding = get_opt_int(args.padding, 'padding', settings)
 
     s = get_opt_str(args.bg_color_str, 'background_rgb', settings)
-    ao.bg_color, ao.frame_bg_color = get_background_colors((255, 255, 255), s)
+    ao.bg_color = get_background_rgb((255, 255, 255), s)
 
     ao.bg_file = get_opt_str(args.bg_file, 'bg_file', settings)
     ao.bg_alpha = get_opt_int(args.bg_alpha, 'bg_alpha', settings)
@@ -358,9 +369,9 @@ def get_size_and_placement(img_size, initial_placement):
     return ((size_width, size_height), new_placement)
 
 
-def get_background_colors(default, arg_str):
+def get_background_rgb(default, arg_str):
     if arg_str is None:
-        return (default, default)
+        return default
 
     a = arg_str.strip().split(',')
 
@@ -369,21 +380,24 @@ def get_background_colors(default, arg_str):
             "Expecting numeric values separated by commas. ",
             "Using default setting."
         )
-        return (default, default)
+        return default
+
+    if any(int(x) < 0 or 255 < int(x) for x in a):
+        print("WARNING: Invalid backround color setting. ",
+            "Expecting numeric values between 0 and 255. ",
+            "Using default setting."
+        )
+        return default
 
     if len(a) == 3:
         rgb = (int(a[0]), int(a[1]), int(a[2]))
-        return (rgb, rgb)
-    elif len(a) == 6:
-        rgb1 = (int(a[0]), int(a[1]), int(a[2]))
-        rgb2 = (int(a[3]), int(a[4]), int(a[5]))
-        return (rgb1, rgb2)
+        return rgb
     else:
         print("WARNING: Invalid backround color setting. ",
-            "Expecting three (or six) numbers separated by commas. ",
+            "Expecting three numbers separated by commas. ",
             "Using default."
         )
-        return (default, default)
+        return default
 
 
 def place_featured(opts: AppOptions, feat_attr, frame_size):

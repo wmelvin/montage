@@ -33,7 +33,7 @@ class AppOptions:
         self.shuffle = False
         self.stamp = False
         self.write_opts = False
-        self.init_dt = datetime.now()
+        self.dt_stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
@@ -50,13 +50,40 @@ class AppOptions:
     def shuffle_images(self):
         random.shuffle(self.image_list)
 
-    # def image_file_name(self):
-    #     p = Path(self.output_file_name)
-    #     if self.stamp:
-    #         dt = self.init_dt.strftime('%Y%m%d_%H%M%S')
-    #     else:
-    #         dt = ''
+    def image_file_name(self):
+        p = Path(self.output_file_name)
+        if self.stamp:
+            p = Path('{0}_{1}'.format(p.with_suffix(''), self.dt_stamp)).with_suffix(p.suffix)
+        return str(p)
 
+    def write_options(self):
+        if self.write_opts:
+            p = Path(self.image_file_name())
+            file_name = str(Path('{0}_{1}'.format(p.with_suffix(''), 'options')).with_suffix('.txt'))
+            with open(file_name, 'w') as f:
+                f.write("[settings]\n")
+                f.write(f"output_file='{self.output_file_name}'\n")
+                f.write(f"canvas_width={self.canvas_width}\n")
+                f.write(f"canvas_height={self.canvas_height}\n")
+                f.write(f"columns={self.cols}\n")
+                f.write(f"rows={self.rows}\n")
+                f.write(f"margin={self.margin}\n")
+                f.write(f"padding={self.padding}\n")
+                f.write(f"background_rgb={self.bg_color}\n")
+        # self.frame_bg_color
+        # self.featured1 = None
+        # self.featured2 = None
+        # self.image_list = []
+        # self.placements = []
+        # self.bg_file = None
+                f.write(f"bg_alpha={self.bg_alpha}\n")
+                f.write(f"bg_blur={self.bg_blur}\n")
+                f.write(f"shuffle={self.shuffle}\n")
+                f.write(f"stamp={self.stamp}\n")
+
+                f.write("\n[images]\n")
+                for img in self.image_list:
+                    f.write(f"'{img}'\n")
 
 
 def get_options(args):
@@ -467,9 +494,11 @@ def main():
             img = img.resize(new_size)
             image.paste(img, new_placement)
 
-    print(f"\nSaving '{opts.out_file_name}'.")
+    print(f"\nSaving '{opts.image_file_name()}'.")
 
-    image.save(opts.out_file_name)
+    image.save(opts.image_file_name())
+
+    opts.write_options()
 
     print(f"\nDone ({app_title}).")
 

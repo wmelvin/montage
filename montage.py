@@ -2,6 +2,7 @@
 
 import argparse
 import random
+from datetime import date, datetime
 from PIL import Image, ImageFilter
 from pathlib import Path
 
@@ -13,7 +14,7 @@ app_title = f'montage.py - version {app_version}'
 
 class AppOptions:
     def __init__(self):
-        self.out_file_name = None
+        self.output_file_name = None
         self.canvas_width = None
         self.canvas_height = None
         self.cols = None
@@ -30,7 +31,10 @@ class AppOptions:
         self.bg_alpha = None
         self.bg_blur = None
         self.shuffle = False
-    
+        self.stamp = False
+        self.write_opts = False
+        self.init_dt = datetime.now()
+
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
 
@@ -45,16 +49,24 @@ class AppOptions:
 
     def shuffle_images(self):
         random.shuffle(self.image_list)
-    
+
+    # def image_file_name(self):
+    #     p = Path(self.output_file_name)
+    #     if self.stamp:
+    #         dt = self.init_dt.strftime('%Y%m%d_%H%M%S')
+    #     else:
+    #         dt = ''
+
+
 
 def get_options(args):
     ao = AppOptions()
-    
+
     if args.settings_file is None:
         file_text = ''
     else:
         p = Path(args.settings_file).expanduser().resolve()
-        
+
         #TODO: Check exists, or just let an exception happen?
         # if not p.exists():
         #     print(f"ERROR: File not found: {args.settings_file}")
@@ -63,18 +75,18 @@ def get_options(args):
         with open(p, 'r') as f:
             file_text = f.readlines()
 
-    
+
     #  If file_text is empty, the defaults from args will be used.
 
     settings = get_option_entries('[settings]', file_text)
 
+    ao.output_file_name = get_opt_str(args.output_file, 'output_file', settings)
     ao.canvas_width = get_opt_int(args.canvas_width, 'canvas_width', settings)
     ao.canvas_height = get_opt_int(args.canvas_height, 'canvas_height', settings)
     ao.cols = get_opt_int(args.cols, 'columns', settings)
     ao.rows = get_opt_int(args.rows, 'rows', settings)
     ao.margin = get_opt_int(args.margin, 'margin', settings)
     ao.padding = get_opt_int(args.padding, 'padding', settings)
-    ao.out_file_name = get_opt_str(args.output_file, 'output_file', settings)
 
     s = get_opt_str(args.bg_color_str, 'background_rgb', settings)
     ao.bg_color, ao.frame_bg_color = get_background_colors((255, 255, 255), s)
@@ -84,14 +96,16 @@ def get_options(args):
     ao.bg_blur = get_opt_int(args.bg_blur, 'bg_blur', settings)
 
     ao.shuffle = get_opt_bool(args.shuffle, 'shuffle', settings)
-    
+    ao.stamp = get_opt_bool(args.stamp, 'stamp', settings)
+    ao.write_opts = get_opt_bool(args.write_opts, 'write_opts', settings)
+
     ao.featured1 = get_opt_feat(get_option_entries('[featured-1]', file_text))
     ao.featured2 = get_opt_feat(get_option_entries('[featured-2]', file_text))
-    
+
     ao.image_list = [i for i in args.images]
-    
+
     ao.image_list += [i.strip("'\"") for i in get_option_entries('[images]', file_text)]
-    
+
     return ao
 
 
@@ -192,7 +206,7 @@ def get_arguments():
     ap.add_argument(
         '-b', '--background-rgb',
         dest = 'bg_color_str',
-        type=str, 
+        type=str,
         action = 'store',
         help = 'Background color as red,green,blue. '
         + 'Also accepts r1,g1,b1,r2,g2,b2 where 2nd set is '
@@ -226,6 +240,20 @@ def get_arguments():
         action = 'store_true',
         help = 'Shuffle the list of images (random order).')
 
+    ap.add_argument(
+        '--stamp',
+        dest = 'stamp',
+        action = 'store_true',
+        help = 'Add a date_time stamp to the output file name.')
+
+    ap.add_argument(
+        '--write-opts',
+        dest = 'write_opts',
+        action = 'store_true',
+        help = 'Write the option settings to a file.')
+
+    #TODO: Add details to help messages.
+
     return ap.parse_args()
 
 
@@ -252,11 +280,11 @@ def get_opt_str(default, opt_name, content):
             a = opt.split('=', 1)
             if len(a) == 2:
                 return a[1].strip("'\"")
-    return default            
+    return default
 
 
 def get_opt_int(default, opt_name, content):
-    s = get_opt_str(None, opt_name, content) 
+    s = get_opt_str(None, opt_name, content)
     if s is None:
         return default
     else:
@@ -264,7 +292,7 @@ def get_opt_int(default, opt_name, content):
 
 
 def get_opt_bool(default, opt_name, content):
-    s = get_opt_str(None, opt_name, content) 
+    s = get_opt_str(None, opt_name, content)
     if (s is None) or (len(s) == 0):
         return default
     s = s[0].lower()
@@ -278,7 +306,7 @@ def get_opt_feat(section_content):
     col = get_opt_int(0, 'column', section_content)
     ncols = get_opt_int(0, 'num_columns', section_content)
     row = get_opt_int(0, 'row', section_content)
-    nrows = get_opt_int(0, 'num_rows', section_content)    
+    nrows = get_opt_int(0, 'num_rows', section_content)
     return (col, ncols, row, nrows)
 
 
@@ -297,7 +325,7 @@ def get_size_and_placement(img_size, initial_placement):
     else:
         add_y = 0
     new_placement = (
-        initial_placement[0] + add_x, 
+        initial_placement[0] + add_x,
         initial_placement[1] + add_y
     )
     return ((size_width, size_height), new_placement)
@@ -324,8 +352,8 @@ def get_background_colors(default, arg_str):
         rgb2 = (int(a[3]), int(a[4]), int(a[5]))
         return (rgb1, rgb2)
     else:
-        print("WARNING: Invalid backround color setting. ", 
-            "Expecting three (or six) numbers separated by commas. ", 
+        print("WARNING: Invalid backround color setting. ",
+            "Expecting three (or six) numbers separated by commas. ",
             "Using default."
         )
         return (default, default)
@@ -436,7 +464,7 @@ def main():
             img = Image.open(opts.image_list[i])
             i += 1
             new_size, new_placement =  get_size_and_placement(img.size, p)
-            img = img.resize(new_size)            
+            img = img.resize(new_size)
             image.paste(img, new_placement)
 
     print(f"\nSaving '{opts.out_file_name}'.")

@@ -70,7 +70,10 @@ def get_options(args):
     ao.margin = get_opt_int(args.margin, 'margin', settings)
     ao.padding = get_opt_int(args.padding, 'padding', settings)
     ao.out_file_name = get_opt_str(args.output_file, 'output_file', settings)
-    ao.bg_color, ao.frame_bg_color = get_background_colors((0, 32, 0), args.bg_color_str)
+
+    s = get_opt_str(args.bg_color_str, 'background_rgb', settings)
+    ao.bg_color, ao.frame_bg_color = get_background_colors((255, 255, 255), s)
+
     ao.bg_file = get_opt_str(args.bg_file, 'bg_file', settings)
     ao.bg_alpha = get_opt_int(args.bg_alpha, 'bg_alpha', settings)
     ao.bg_blur = get_opt_int(args.bg_blur, 'bg_blur', settings)
@@ -332,6 +335,35 @@ def outside_featured(col_index, row_index, feat_1, feat_2):
     return a and b
 
 
+def get_new_size_zoom(current_size, target_size):
+    scale_w = target_size[0] / current_size[0]
+    scale_h = target_size[1] / current_size[1]
+    scale_by = max(scale_w, scale_h)
+    return (int(current_size[0] * scale_by), int(current_size[0] * scale_by))
+
+
+def get_crop_box(current_size, target_size):
+    cur_w, cur_h = current_size
+    trg_w, trg_h = target_size
+
+    if trg_w < cur_w:
+        x1 = int((cur_w - trg_w) / 2)
+        x2 = cur_w - x1
+    else:
+        x1 = 0
+        x2 = trg_w
+
+    if trg_h < cur_h:
+        y1 = int((cur_h - trg_h) / 2)
+        y2 = cur_h - y1
+    else:
+        y1 = 0
+        y2 = trg_h
+
+    return (x1, y1, x2, y2)
+
+
+
 def main():
     print(f"\n{app_title}")
 
@@ -349,7 +381,14 @@ def main():
 
     if opts.has_background_image():
         bg_image = Image.open(opts.bg_file)
-        bg_image = bg_image.resize(opts.canvas_size())
+
+        new_size = get_new_size_zoom(bg_image.size, opts.canvas_size())
+        bg_image = bg_image.resize(new_size)
+
+        crop_box = get_crop_box(bg_image.size, opts.canvas_size())
+        bg_image = bg_image.crop(crop_box)
+
+
         bg_image = bg_image.filter(ImageFilter.BoxBlur(opts.bg_blur))
         bg_mask = Image.new('RGBA', opts.canvas_size(), opts.background_mask_rgba())
         image.paste(bg_image, (0, 0), mask=bg_mask)

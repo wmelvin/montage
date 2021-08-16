@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+from os import name
 import random
 from collections import namedtuple
 from datetime import date, datetime
@@ -13,8 +14,9 @@ app_version = '20210816.1'
 app_title = f'montage.py - version {app_version}'
 
 
-FeatAttr = namedtuple('FeatAttr', 'col, ncols, row, nrows, file_name')
+FeatureImage = namedtuple('FeatureImage', 'col, ncols, row, nrows, file_name')
 
+Placement = namedtuple('Placement', 'left, top, width, height, file_name')
 
 class AppOptions:
     def __init__(self):
@@ -43,7 +45,7 @@ class AppOptions:
         return (int(self.canvas_width), int(self.canvas_height))
 
     def add_placement(self, x, y, w, h, file_name=''):
-        self.placements.append((x, y, w, h, file_name))
+        self.placements.append(Placement(x, y, w, h, file_name))
 
     def has_background_image(self):
         return (self.bg_file is not None) and (0 < len(self.bg_file))
@@ -351,28 +353,28 @@ def get_opt_feat(section_content):
     nrows = get_opt_int(0, 'num_rows', section_content)
     file_name = get_opt_str('', 'file', section_content)
     # return (col, ncols, row, nrows, file_name)    
-    return FeatAttr(col, ncols, row, nrows, file_name)
+    return FeatureImage(col, ncols, row, nrows, file_name)
 
 
-def get_size_and_placement(img_size, initial_placement):
-    scale_w = initial_placement[2] / img_size[0]
-    scale_h = initial_placement[3] / img_size[1]
+def get_size_and_position(img_size, initial_placement: Placement):
+    scale_w = initial_placement.width / img_size[0]
+    scale_h = initial_placement.height / img_size[1]
     scale_factor = min(scale_w, scale_h)
     size_width = int(img_size[0] * scale_factor)
     size_height = int(img_size[1] * scale_factor)
-    if size_width < initial_placement[2]:
-        add_x = int((initial_placement[2] - size_width) / 2)
+    if size_width < initial_placement.width:
+        add_x = int((initial_placement.width - size_width) / 2)
     else:
         add_x = 0
-    if size_height < initial_placement[3]:
-        add_y = int((initial_placement[3] - size_height) / 2)
+    if size_height < initial_placement.height:
+        add_y = int((initial_placement.height - size_height) / 2)
     else:
         add_y = 0
-    new_placement = (
-        initial_placement[0] + add_x,
-        initial_placement[1] + add_y
+    new_position = (
+        initial_placement.left + add_x,
+        initial_placement.top + add_y
     )
-    return ((size_width, size_height), new_placement)
+    return ((size_width, size_height), new_position)
 
 
 def get_background_rgb(default, arg_str):
@@ -503,17 +505,17 @@ def main():
                 opts.add_placement(x, y, inner_w, inner_h)
 
     i = 0
-    for p in opts.placements:
+    for placement in opts.placements:
         if i < len(opts.image_list):
-            if len(p[4]) == 0:
+            if len(placement.file_name) == 0:
                 image_name = opts.image_list[i]
                 i += 1
             else:
-                image_name = p[4]            
+                image_name = placement.file_name            
             img = Image.open(image_name)
-            new_size, new_placement =  get_size_and_placement(img.size, p)
+            new_size, new_position =  get_size_and_position(img.size, placement)
             img = img.resize(new_size)
-            image.paste(img, new_placement)
+            image.paste(img, new_position)
 
     print(f"\nSaving '{opts.image_file_name()}'.")
 

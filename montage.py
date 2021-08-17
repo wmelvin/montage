@@ -9,7 +9,7 @@ from PIL import Image, ImageFilter
 from pathlib import Path
 
 
-app_version = '20210816.1'
+app_version = '20210817.1'
 
 app_title = f'montage.py - version {app_version}'
 
@@ -78,45 +78,45 @@ class AppOptions:
             print(f"\nWriting options to '{file_name}'\n")
             with open(file_name, 'w') as f:
                 f.write("\n[settings]\n")
-                f.write(f"output_file='{self.output_file_name}'\n")
-                f.write(f"canvas_width={self.canvas_width}\n")
-                f.write(f"canvas_height={self.canvas_height}\n")
-                f.write(f"columns={self.cols}\n")
-                f.write(f"rows={self.rows}\n")
-                f.write(f"margin={self.margin}\n")
-                f.write(f"padding={self.padding}\n")
+                f.write(f"output_file = {qs(self.output_file_name)}\n")
+                f.write(f"canvas_width = {self.canvas_width}\n")
+                f.write(f"canvas_height = {self.canvas_height}\n")
+                f.write(f"columns = {self.cols}\n")
+                f.write(f"rows = {self.rows}\n")
+                f.write(f"margin = {self.margin}\n")
+                f.write(f"padding = {self.padding}\n")
 
-                f.write("background_rgb={0},{1},{2}\n".format(
+                f.write("background_rgb = {0},{1},{2}\n".format(
                     self.bg_color[0],
                     self.bg_color[1],
                     self.bg_color[2]
                 ))
 
-                f.write(f"bg_file='{self.bg_file}'\n")
-                f.write(f"bg_alpha={self.bg_alpha}\n")
-                f.write(f"bg_blur={self.bg_blur}\n")
-                f.write(f"shuffle={self.shuffle}\n")
-                f.write(f"stamp={self.stamp}\n")
+                f.write(f"bg_file = {qs(self.bg_file)}\n")
+                f.write(f"bg_alpha = {self.bg_alpha}\n")
+                f.write(f"bg_blur = {self.bg_blur}\n")
+                f.write(f"shuffle = {self.shuffle}\n")
+                f.write(f"stamp = {self.stamp}\n")
 
                 if self.feature1.ncols:
                     f.write("\n[feature-1]\n")
-                    f.write(f"file='{self.feature1.file_name}'\n")
-                    f.write(f"column={self.feature1.col}\n")
-                    f.write(f"row={self.feature1.row}\n")
-                    f.write(f"num_columns={self.feature1.ncols}\n")
-                    f.write(f"num_rows={self.feature1.nrows}\n")
+                    f.write(f"file = {qs(self.feature1.file_name)}\n")
+                    f.write(f"column = {self.feature1.col}\n")
+                    f.write(f"row = {self.feature1.row}\n")
+                    f.write(f"num_columns = {self.feature1.ncols}\n")
+                    f.write(f"num_rows = {self.feature1.nrows}\n")
 
                 if self.feature2.ncols:
                     f.write("\n[feature-2]\n")
-                    f.write(f"file='{self.feature2.file_name}'\n")
-                    f.write(f"column={self.feature2.col}\n")
-                    f.write(f"row={self.feature2.row}\n")
-                    f.write(f"num_columns={self.feature2.ncols}\n")
-                    f.write(f"num_rows={self.feature2.nrows}\n")
+                    f.write(f"file = {qs(self.feature2.file_name)}\n")
+                    f.write(f"column = {self.feature2.col}\n")
+                    f.write(f"row = {self.feature2.row}\n")
+                    f.write(f"num_columns = {self.feature2.ncols}\n")
+                    f.write(f"num_rows = {self.feature2.nrows}\n")
 
                 f.write("\n[images]\n")
                 for img in self.image_list:
-                    f.write(f"'{img}'\n")
+                    f.write(f"{qs(img)}\n")
 
 
 def get_options(args):
@@ -379,7 +379,8 @@ def get_opt_str(default, opt_name, content):
         if opt.strip().startswith(opt_name):
             a = opt.split('=', 1)
             if len(a) == 2:
-                return a[1].strip("'\"")
+                if a[0].strip() == opt_name:
+                    return a[1].strip("'\" ")
     return default
 
 
@@ -434,6 +435,18 @@ def get_opt_feat(section_content):
     nrows = get_opt_int(0, 'num_rows', section_content)
     file_name = get_opt_str('', 'file', section_content)
     return FeatureImage(col, ncols, row, nrows, file_name)
+
+
+def qs(s: str) -> str:
+    """ Returns the given string in quotes if it contains spaces. """
+
+    assert '"' not in s
+    # TODO: Handle this case instead.
+
+    if ' ' in s:
+        return f'"{s}"'
+    else:
+        return s
 
 
 def get_size_and_position(img_size, initial_placement: Placement):

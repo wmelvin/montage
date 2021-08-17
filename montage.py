@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 import argparse
-from os import name
+# from os import name
 import random
 from collections import namedtuple
-from datetime import date, datetime
+from datetime import datetime
 from PIL import Image, ImageFilter
 from pathlib import Path
 
@@ -14,9 +14,12 @@ app_version = '20210816.1'
 app_title = f'montage.py - version {app_version}'
 
 
-FeatureImage = namedtuple('FeatureImage', 'col, ncols, row, nrows, file_name')
+FeatureImage = namedtuple(
+    'FeatureImage', 'col, ncols, row, nrows, file_name'
+)
 
 Placement = namedtuple('Placement', 'left, top, width, height, file_name')
+
 
 class AppOptions:
     def __init__(self):
@@ -58,13 +61,20 @@ class AppOptions:
     def image_file_name(self):
         p = Path(self.output_file_name)
         if self.stamp:
-            p = Path('{0}_{1}'.format(p.with_suffix(''), self.dt_stamp)).with_suffix(p.suffix)
+            p = Path('{0}_{1}'.format(
+                p.with_suffix(''),
+                self.dt_stamp)
+            ).with_suffix(p.suffix)
         return str(p)
 
     def write_options(self):
         if self.write_opts:
             p = Path(self.image_file_name())
-            file_name = str(Path('{0}_{1}'.format(p.with_suffix(''), 'options')).with_suffix('.txt'))
+
+            file_name = str(Path('{0}_{1}'.format(
+                p.with_suffix(''), 'options')
+            ).with_suffix('.txt'))
+
             print(f"\nWriting options to '{file_name}'\n")
             with open(file_name, 'w') as f:
                 f.write("\n[settings]\n")
@@ -75,7 +85,13 @@ class AppOptions:
                 f.write(f"rows={self.rows}\n")
                 f.write(f"margin={self.margin}\n")
                 f.write(f"padding={self.padding}\n")
-                f.write(f"background_rgb={self.bg_color[0]},{self.bg_color[1]},{self.bg_color[2]}\n")
+
+                f.write("background_rgb={0},{1},{2}\n".format(
+                    self.bg_color[0],
+                    self.bg_color[1],
+                    self.bg_color[2]
+                ))
+
                 f.write(f"bg_file='{self.bg_file}'\n")
                 f.write(f"bg_alpha={self.bg_alpha}\n")
                 f.write(f"bg_blur={self.bg_blur}\n")
@@ -89,7 +105,7 @@ class AppOptions:
                     f.write(f"row={self.feature1.row}\n")
                     f.write(f"num_columns={self.feature1.ncols}\n")
                     f.write(f"num_rows={self.feature1.nrows}\n")
-                
+
                 if self.feature2.ncols:
                     f.write("\n[feature-2]\n")
                     f.write(f"file='{self.feature2.file_name}'\n")
@@ -111,7 +127,7 @@ def get_options(args):
     else:
         p = Path(args.settings_file).expanduser().resolve()
 
-        #TODO: Check exists, or just let an exception happen?
+        # TODO: Check exists, or just let an exception happen?
         # if not p.exists():
         #     print(f"ERROR: File not found: {args.settings_file}")
         #     return
@@ -119,14 +135,22 @@ def get_options(args):
         with open(p, 'r') as f:
             file_text = f.readlines()
 
-
     #  If file_text is empty, the defaults from args will be used.
 
     settings = get_option_entries('[settings]', file_text)
 
-    ao.output_file_name = get_opt_str(args.output_file, 'output_file', settings)
-    ao.canvas_width = get_opt_int(args.canvas_width, 'canvas_width', settings)
-    ao.canvas_height = get_opt_int(args.canvas_height, 'canvas_height', settings)
+    ao.output_file_name = get_opt_str(
+        args.output_file, 'output_file', settings
+    )
+
+    ao.canvas_width = get_opt_int(
+        args.canvas_width, 'canvas_width', settings
+    )
+
+    ao.canvas_height = get_opt_int(
+        args.canvas_height, 'canvas_height', settings
+    )
+
     ao.cols = get_opt_int(args.cols, 'columns', settings)
     ao.rows = get_opt_int(args.rows, 'rows', settings)
     ao.margin = get_opt_int(args.margin, 'margin', settings)
@@ -142,18 +166,24 @@ def get_options(args):
     ao.shuffle = get_opt_bool(args.shuffle, 'shuffle', settings)
     ao.stamp = get_opt_bool(args.stamp, 'stamp', settings)
     ao.write_opts = get_opt_bool(args.write_opts, 'write_opts', settings)
-    
+
     ao.feature1 = get_feature_args(args.feature_1)
     if ao.feature1.ncols == 0:
-        ao.feature1 = get_opt_feat(get_option_entries('[feature-1]', file_text))
+        ao.feature1 = get_opt_feat(
+            get_option_entries('[feature-1]', file_text)
+        )
 
     ao.feature2 = get_feature_args(args.feature_2)
     if ao.feature2.ncols == 0:
-        ao.feature2 = get_opt_feat(get_option_entries('[feature-2]', file_text))
-        
+        ao.feature2 = get_opt_feat(
+            get_option_entries('[feature-2]', file_text)
+        )
+
     ao.image_list = [i for i in args.images]
 
-    ao.image_list += [i.strip("'\"") for i in get_option_entries('[images]', file_text)]
+    ao.image_list += [
+        i.strip("'\"") for i in get_option_entries('[images]', file_text)
+    ]
 
     return ao
 
@@ -168,140 +198,161 @@ def get_arguments():
     default_file_name = 'output.jpg'
 
     ap = argparse.ArgumentParser(
-        description =
-        'Create an image montage given a list of image files.')
+        description='Create an image montage given a list of image files.'
+    )
 
     ap.add_argument(
         'images',
-        nargs = '*',
-        action = 'store',
-        help = 'Images files to include in the montage image. Multiple files can be specified.')
+        nargs='*',
+        action='store',
+        help='Images files to include in the montage image. '
+        + 'Multiple files can be specified.'
+    )
 
     ap.add_argument(
         '-o', '--output-file',
-        dest = 'output_file',
-        default = default_file_name,
-        action = 'store',
-        help = 'Name of output file.')
+        dest='output_file',
+        default=default_file_name,
+        action='store',
+        help='Name of output file.'
+    )
 
     ap.add_argument(
         '-x', '--canvas-width',
-        dest = 'canvas_width',
-        type = int,
-        default = default_canvas_width,
-        action = 'store',
-        help = 'Canvas width in pixels.')
+        dest='canvas_width',
+        type=int,
+        default=default_canvas_width,
+        action='store',
+        help='Canvas width in pixels.'
+    )
 
     ap.add_argument(
         '-y', '--canvas-height',
-        dest = 'canvas_height',
-        type = int,
-        default = default_canvas_height,
-        action = 'store',
-        help = 'Canvas height in pixels.')
+        dest='canvas_height',
+        type=int,
+        default=default_canvas_height,
+        action='store',
+        help='Canvas height in pixels.'
+    )
 
     ap.add_argument(
         '-c', '--columns',
-        dest = 'cols',
-        type = int,
-        default = 2,
-        action = 'store',
-        help = 'Number of columns.')
+        dest='cols',
+        type=int,
+        default=2,
+        action='store',
+        help='Number of columns.'
+    )
 
     ap.add_argument(
         '-r', '--rows',
-        dest = 'rows',
-        type = int,
-        default = 2,
-        action = 'store',
-        help = 'Number of rows.')
+        dest='rows',
+        type=int,
+        default=2,
+        action='store',
+        help='Number of rows.'
+    )
 
     ap.add_argument(
         '-m', '--margin',
-        dest = 'margin',
-        type = int,
-        default = default_margin,
-        action = 'store',
-        help = 'Margin in pixels.')
+        dest='margin',
+        type=int,
+        default=default_margin,
+        action='store',
+        help='Margin in pixels.'
+    )
 
     ap.add_argument(
         '-p', '--padding',
-        dest = 'padding',
-        type = int,
-        default = default_padding,
-        action = 'store',
-        help = 'Padding in pixels.')
+        dest='padding',
+        type=int,
+        default=default_padding,
+        action='store',
+        help='Padding in pixels.'
+    )
 
     ap.add_argument(
         '-b', '--background-rgb',
-        dest = 'bg_color_str',
+        dest='bg_color_str',
         type=str,
-        action = 'store',
-        help = 'Background color as red,green,blue. '
+        action='store',
+        help='Background color as red,green,blue. '
         + 'Also accepts r1,g1,b1,r2,g2,b2 where 2nd set is '
-        + 'the background color for the innder frames.')
+        + 'the background color for the innder frames.'
+    )
 
     ap.add_argument(
         '-g', '--background-image',
-        dest = 'bg_file',
-        action = 'store',
-        help = 'Name of image file to use as the background image.')
+        dest='bg_file',
+        action='store',
+        help='Name of image file to use as the background image.'
+    )
 
     ap.add_argument(
         '--background-alpha',
-        dest = 'bg_alpha',
-        type = int,
-        default = default_bg_alpha,
-        action = 'store',
-        help = 'Alpha (transparency) value for background image (0..255).')
+        dest='bg_alpha',
+        type=int,
+        default=default_bg_alpha,
+        action='store',
+        help='Alpha (transparency) value for background image (0..255).'
+    )
 
     ap.add_argument(
         '--background-blur',
-        dest = 'bg_blur',
-        type = int,
-        default = default_bg_blur,
-        action = 'store',
-        help = 'Blur radius for background image (0 = none).')
+        dest='bg_blur',
+        type=int,
+        default=default_bg_blur,
+        action='store',
+        help='Blur radius for background image (0 = none).'
+    )
 
     ap.add_argument(
         '--feature-1',
-        dest = 'feature_1',
-        type = str,
-        action = 'store',
-        help = 'Attributes for first featured image as (col, ncols, row, nrows, file_name).')
+        dest='feature_1',
+        type=str,
+        action='store',
+        help='Attributes for first featured image as '
+        + '(col, ncols, row, nrows, file_name).'
+    )
 
     ap.add_argument(
         '--feature-2',
-        dest = 'feature_2',
-        type = str,
-        action = 'store',
-        help = 'Attributes for second featured image as (col, ncols, row, nrows, file_name).')
+        dest='feature_2',
+        type=str,
+        action='store',
+        help='Attributes for second featured image as '
+        + '(col, ncols, row, nrows, file_name).'
+    )
 
     ap.add_argument(
         '--shuffle',
-        dest = 'shuffle',
-        action = 'store_true',
-        help = 'Shuffle the list of images (random order).')
+        dest='shuffle',
+        action='store_true',
+        help='Shuffle the list of images (random order).'
+    )
 
     ap.add_argument(
         '--stamp',
-        dest = 'stamp',
-        action = 'store_true',
-        help = 'Add a date_time stamp to the output file name.')
+        dest='stamp',
+        action='store_true',
+        help='Add a date_time stamp to the output file name.'
+    )
 
     ap.add_argument(
         '-s', '--settings-file',
-        dest = 'settings_file',
-        action = 'store',
-        help = 'Name of settings file.')
+        dest='settings_file',
+        action='store',
+        help='Name of settings file.'
+    )
 
     ap.add_argument(
         '--write-opts',
-        dest = 'write_opts',
-        action = 'store_true',
-        help = 'Write the option settings to a file.')
+        dest='write_opts',
+        action='store_true',
+        help='Write the option settings to a file.'
+    )
 
-    #TODO: Add details to help messages.
+    # TODO: Add details to help messages.
 
     return ap.parse_args()
 
@@ -358,13 +409,15 @@ def get_feature_args(feat_args):
     a = feat_args.strip('()').split(',')
 
     if len(a) != 5:
-        print("WARNING: Ignoring invalid feature attributes. ",
+        print(
+            "WARNING: Ignoring invalid feature attributes. ",
             "Expected five values separated by commas."
         )
         return FeatureImage(0, 0, 0, 0, '')
 
     if any(not x.strip().isdigit() for x in a[:-1]):
-        print("WARNING: Ignoring invalid feature attributes. ",
+        print(
+            "WARNING: Ignoring invalid feature attributes. ",
             "Expected first four numeric values are numeric."
         )
         return FeatureImage(0, 0, 0, 0, '')
@@ -411,14 +464,16 @@ def get_background_rgb(default, arg_str):
     a = arg_str.strip().split(',')
 
     if any(not x.isdigit() for x in a):
-        print("WARNING: Invalid backround color setting. ",
+        print(
+            "WARNING: Invalid backround color setting. ",
             "Expecting numeric values separated by commas. ",
             "Using default setting."
         )
         return default
 
     if any(int(x) < 0 or 255 < int(x) for x in a):
-        print("WARNING: Invalid backround color setting. ",
+        print(
+            "WARNING: Invalid backround color setting. ",
             "Expecting numeric values between 0 and 255. ",
             "Using default setting."
         )
@@ -428,7 +483,8 @@ def get_background_rgb(default, arg_str):
         rgb = (int(a[0]), int(a[1]), int(a[2]))
         return rgb
     else:
-        print("WARNING: Invalid backround color setting. ",
+        print(
+            "WARNING: Invalid backround color setting. ",
             "Expecting three numbers separated by commas. ",
             "Using default."
         )
@@ -439,8 +495,8 @@ def place_feature(opts: AppOptions, feat_attr, frame_size):
     if feat_attr.nrows and feat_attr.ncols:
         assert(0 < feat_attr.nrows)
         assert(0 < feat_attr.ncols)
-        x = (opts.margin + ((feat_attr.col - 1) * frame_size[0]) + opts.padding)
-        y = (opts.margin + ((feat_attr.row - 1) * frame_size[1]) + opts.padding)
+        x = opts.margin + ((feat_attr.col - 1) * frame_size[0]) + opts.padding
+        y = opts.margin + ((feat_attr.row - 1) * frame_size[1]) + opts.padding
         w = int((frame_size[0] * feat_attr.ncols) - (opts.padding * 2))
         h = int((frame_size[1] * feat_attr.nrows) - (opts.padding * 2))
         opts.add_placement(x, y, w, h, feat_attr.file_name)
@@ -448,8 +504,14 @@ def place_feature(opts: AppOptions, feat_attr, frame_size):
 
 def outside_feat(col_index, row_index, feat_attr):
     if feat_attr.nrows and feat_attr.ncols:
-        a = (col_index + 1) in range(feat_attr.col, (feat_attr.col + feat_attr.ncols))
-        b = (row_index + 1) in range(feat_attr.row, (feat_attr.row + feat_attr.nrows))
+        a = (col_index + 1) in range(
+            feat_attr.col,
+            feat_attr.col + feat_attr.ncols
+        )
+        b = (row_index + 1) in range(
+            feat_attr.row,
+            feat_attr.row + feat_attr.nrows
+        )
         return not (a and b)
     return True
 
@@ -513,7 +575,9 @@ def main():
 
         bg_image = bg_image.filter(ImageFilter.BoxBlur(opts.bg_blur))
 
-        bg_mask = Image.new('RGBA', opts.canvas_size(), opts.background_mask_rgba())
+        bg_mask = Image.new(
+            'RGBA', opts.canvas_size(), opts.background_mask_rgba()
+        )
 
         image.paste(bg_image, (0, 0), mask=bg_mask)
 
@@ -538,11 +602,11 @@ def main():
                 image_name = opts.image_list[i]
                 i += 1
             else:
-                image_name = placement.file_name            
+                image_name = placement.file_name
             img = Image.open(image_name)
-            new_size, new_position =  get_size_and_position(img.size, placement)
+            new_size, new_pos = get_size_and_position(img.size, placement)
             img = img.resize(new_size)
-            image.paste(img, new_position)
+            image.paste(img, new_pos)
 
     print(f"\nCreating image '{opts.image_file_name()}'")
 

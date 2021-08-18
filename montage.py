@@ -9,7 +9,7 @@ from PIL import Image, ImageFilter
 from pathlib import Path
 
 
-app_version = '20210817.1'
+app_version = '20210818.1'
 
 app_title = f'montage.py - version {app_version}'
 
@@ -39,7 +39,7 @@ class AppOptions:
         self.bg_alpha = None
         self.bg_blur = None
         self.shuffle = False
-        self.stamp = False
+        self.stamp_mode = 0
         self.write_opts = False
         self.dt_stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
@@ -60,11 +60,20 @@ class AppOptions:
 
     def image_file_name(self):
         p = Path(self.output_file_name)
-        if self.stamp:
+
+        if self.stamp_mode == 1:
+            # Mode 1: date_time stamp at left of file name.
+            p = Path('{0}_{1}'.format(
+                self.dt_stamp,
+                p.with_suffix(''))
+            ).with_suffix(p.suffix)
+        elif self.stamp_mode == 2:
+            # Mode 2: date_time stamp at right of file name.
             p = Path('{0}_{1}'.format(
                 p.with_suffix(''),
                 self.dt_stamp)
             ).with_suffix(p.suffix)
+
         return str(p)
 
     def write_options(self):
@@ -96,7 +105,8 @@ class AppOptions:
                 f.write(f"bg_alpha = {self.bg_alpha}\n")
                 f.write(f"bg_blur = {self.bg_blur}\n")
                 f.write(f"shuffle = {self.shuffle}\n")
-                f.write(f"stamp = {self.stamp}\n")
+                f.write(f"stamp_mode = {self.stamp_mode}\n")
+                f.write(f"write_opts = {self.write_opts}\n")
 
                 if self.feature1.ncols:
                     f.write("\n[feature-1]\n")
@@ -164,7 +174,7 @@ def get_options(args):
     ao.bg_blur = get_opt_int(args.bg_blur, 'bg_blur', settings)
 
     ao.shuffle = get_opt_bool(args.shuffle, 'shuffle', settings)
-    ao.stamp = get_opt_bool(args.stamp, 'stamp', settings)
+    ao.stamp_mode = get_opt_bool(args.stamp_mode, 'stamp_mode', settings)
     ao.write_opts = get_opt_bool(args.write_opts, 'write_opts', settings)
 
     ao.feature1 = get_feature_args(args.feature_1)
@@ -332,10 +342,13 @@ def get_arguments():
     )
 
     ap.add_argument(
-        '--stamp',
-        dest='stamp',
-        action='store_true',
-        help='Add a date_time stamp to the output file name.'
+        '--stamp-mode',
+        dest='stamp_mode',
+        type=int,
+        default=0,
+        action='store',
+        help='Mode for adding a date_time stamp to the output file name: '
+        + '0 = none, 1 = at left of file name, 2 = at right of file name.'
     )
 
     ap.add_argument(
@@ -440,8 +453,12 @@ def get_opt_feat(section_content):
 def qs(s: str) -> str:
     """ Returns the given string in quotes if it contains spaces. """
 
+    if s is None:
+        return ''
+
     assert '"' not in s
-    # TODO: Handle this case instead.
+    #  TODO: Handle this case instead of just asserting? If so, are quotes
+    #  doubled ("") or escaped (\")?
 
     if ' ' in s:
         return f'"{s}"'
@@ -586,10 +603,19 @@ def main():
         crop_box = get_crop_box(bg_image.size, opts.canvas_size())
         bg_image = bg_image.crop(crop_box)
 
+        if bg_image.size != opts.canvas_size():
+            #  These should match. Warn when they do not.
+            print(
+                "WARNING: bg_image.size={0} but canvas_size={1}.".format(
+                    bg_image.size,
+                    opts.canvas_size()
+                )
+            )
+
         bg_image = bg_image.filter(ImageFilter.BoxBlur(opts.bg_blur))
 
         bg_mask = Image.new(
-            'RGBA', opts.canvas_size(), opts.background_mask_rgba()
+            'RGBA', bg_image.size, opts.background_mask_rgba()
         )
 
         image.paste(bg_image, (0, 0), mask=bg_mask)

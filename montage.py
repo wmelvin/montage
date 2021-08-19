@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-# from os import name
 import random
 from collections import namedtuple
 from datetime import datetime
@@ -42,6 +41,7 @@ class AppOptions:
         self.stamp_mode = 0
         self.write_opts = False
         self.dt_stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        self.output_dir = None
 
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
@@ -59,6 +59,13 @@ class AppOptions:
         random.shuffle(self.image_list)
 
     def image_file_name(self):
+        if len(self.output_dir) == 0:
+            dir = Path.cwd()
+        else:
+            dir = Path(self.output_dir).expanduser().resolve()
+        assert dir.is_dir
+        assert dir.exists()
+
         p = Path(self.output_file_name)
 
         if self.stamp_mode == 1:
@@ -74,7 +81,7 @@ class AppOptions:
                 self.dt_stamp)
             ).with_suffix(p.suffix)
 
-        return str(p)
+        return str(dir.joinpath(p))
 
     def write_options(self):
         if self.write_opts:
@@ -87,42 +94,41 @@ class AppOptions:
             print(f"\nWriting options to '{file_name}'\n")
             with open(file_name, 'w') as f:
                 f.write("\n[settings]\n")
-                f.write(f"output_file = {qs(self.output_file_name)}\n")
-                f.write(f"canvas_width = {self.canvas_width}\n")
-                f.write(f"canvas_height = {self.canvas_height}\n")
-                f.write(f"columns = {self.cols}\n")
-                f.write(f"rows = {self.rows}\n")
-                f.write(f"margin = {self.margin}\n")
-                f.write(f"padding = {self.padding}\n")
+                f.write(f"output_file={qs(self.output_file_name)}\n")
+                f.write(f"output_dir={qs(self.output_dir)}\n")
+                f.write(f"canvas_width={self.canvas_width}\n")
+                f.write(f"canvas_height={self.canvas_height}\n")
+                f.write(f"columns={self.cols}\n")
+                f.write(f"rows={self.rows}\n")
+                f.write(f"margin={self.margin}\n")
+                f.write(f"padding={self.padding}\n")
 
-                f.write("background_rgb = {0},{1},{2}\n".format(
+                f.write("background_rgb={0},{1},{2}\n".format(
                     self.bg_color[0],
                     self.bg_color[1],
                     self.bg_color[2]
                 ))
 
-                f.write(f"bg_file = {qs(self.bg_file)}\n")
-                f.write(f"bg_alpha = {self.bg_alpha}\n")
-                f.write(f"bg_blur = {self.bg_blur}\n")
-                f.write(f"shuffle = {self.shuffle}\n")
-                f.write(f"stamp_mode = {self.stamp_mode}\n")
-                f.write(f"write_opts = {self.write_opts}\n")
+                f.write(f"bg_file={qs(self.bg_file)}\n")
+                f.write(f"bg_alpha={self.bg_alpha}\n")
+                f.write(f"bg_blur={self.bg_blur}\n")
+                f.write(f"shuffle={self.shuffle}\n")
+                f.write(f"stamp_mode={self.stamp_mode}\n")
+                f.write(f"write_opts={self.write_opts}\n")
 
-                # if self.feature1.ncols:
                 f.write("\n[feature-1]\n")
-                f.write(f"file = {qs(self.feature1.file_name)}\n")
-                f.write(f"column = {self.feature1.col}\n")
-                f.write(f"row = {self.feature1.row}\n")
-                f.write(f"num_columns = {self.feature1.ncols}\n")
-                f.write(f"num_rows = {self.feature1.nrows}\n")
+                f.write(f"file={qs(self.feature1.file_name)}\n")
+                f.write(f"column={self.feature1.col}\n")
+                f.write(f"row={self.feature1.row}\n")
+                f.write(f"num_columns={self.feature1.ncols}\n")
+                f.write(f"num_rows={self.feature1.nrows}\n")
 
-                # if self.feature2.ncols:
                 f.write("\n[feature-2]\n")
-                f.write(f"file = {qs(self.feature2.file_name)}\n")
-                f.write(f"column = {self.feature2.col}\n")
-                f.write(f"row = {self.feature2.row}\n")
-                f.write(f"num_columns = {self.feature2.ncols}\n")
-                f.write(f"num_rows = {self.feature2.nrows}\n")
+                f.write(f"file={qs(self.feature2.file_name)}\n")
+                f.write(f"column={self.feature2.col}\n")
+                f.write(f"row={self.feature2.row}\n")
+                f.write(f"num_columns={self.feature2.ncols}\n")
+                f.write(f"num_rows={self.feature2.nrows}\n")
 
                 f.write("\n[images]\n")
                 for img in self.image_list:
@@ -151,6 +157,10 @@ def get_options(args):
 
     ao.output_file_name = get_opt_str(
         args.output_file, 'output_file', settings
+    )
+
+    ao.output_dir = get_opt_str(
+        args.output_dir, 'output_dir', settings
     )
 
     ao.canvas_width = get_opt_int(
@@ -225,6 +235,14 @@ def get_arguments():
         default=default_file_name,
         action='store',
         help='Name of output file.'
+    )
+
+    ap.add_argument(
+        '-d', '--output-dir',
+        dest='output_dir',
+        default='',
+        action='store',
+        help='Name of output directory.'
     )
 
     ap.add_argument(

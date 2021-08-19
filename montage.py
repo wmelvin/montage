@@ -25,8 +25,8 @@ class AppOptions:
         self.output_file_name = None
         self.canvas_width = None
         self.canvas_height = None
-        self.cols = None
-        self.rows = None
+        self.ncols = None
+        self.nrows = None
         self.margin = None
         self.padding = None
         self.bg_color = None
@@ -38,7 +38,9 @@ class AppOptions:
         # self.bg_file = None
         self.bg_alpha = None
         self.bg_blur = None
-        self.shuffle = False
+        # self.shuffle = False
+        self.shuffle_mode = None
+        self.shuffle_count = None
         self.stamp_mode = 0
         self.write_opts = False
         self.dt_stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -60,8 +62,42 @@ class AppOptions:
     def background_mask_rgba(self):
         return (0, 0, 0, self.bg_alpha)
 
+    def get_shuffled(self, value, weighted_flag):
+        if weighted_flag in self.shuffle_mode:
+            a = []
+            for v in range(1, value + 1):
+                for x in range(v * 2):
+                    a.append(v)
+        else:
+            a = [x for x in range(0, value + 1)]
+        random.shuffle(a)
+        return a[0]
+
+    def get_num_columns(self):
+        if 'c' in self.shuffle_mode:
+            return self.get_shuffled(self.ncols, 'wc')
+        else:
+            return self.ncols
+
+    def get_num_rows(self):
+        if 'r' in self.shuffle_mode:
+            return self.get_shuffled(self.nrows, 'wr')
+        else:
+            return self.nrows
+
+    def do_shuffle_images(self):
+        return 'i' in self.shuffle_mode
+
     def shuffle_images(self):
-        random.shuffle(self.image_list)
+        if self.do_shuffle_images():
+            random.shuffle(self.image_list)
+
+    def do_shuffle_bg_images(self):
+        return 'b' in self.shuffle_mode
+
+    def shuffle_bg_images(self):
+        if self.do_shuffle_bg_images():
+            random.shuffle(self.bg_image_list)
 
     def image_file_name(self):
         if len(self.output_dir) == 0:
@@ -104,8 +140,8 @@ class AppOptions:
                 f.write(f"output_dir={qs(self.output_dir)}\n")
                 f.write(f"canvas_width={self.canvas_width}\n")
                 f.write(f"canvas_height={self.canvas_height}\n")
-                f.write(f"columns={self.cols}\n")
-                f.write(f"rows={self.rows}\n")
+                f.write(f"columns={self.ncols}\n")
+                f.write(f"rows={self.nrows}\n")
                 f.write(f"margin={self.margin}\n")
                 f.write(f"padding={self.padding}\n")
 
@@ -118,7 +154,8 @@ class AppOptions:
                 # f.write(f"bg_file={qs(self.bg_file)}\n")
                 f.write(f"bg_alpha={self.bg_alpha}\n")
                 f.write(f"bg_blur={self.bg_blur}\n")
-                f.write(f"shuffle={self.shuffle}\n")
+                f.write(f"shuffle_mode={self.shuffle_mode}\n")
+                f.write(f"shuffle_count={self.shuffle_count}\n")
                 f.write(f"stamp_mode={self.stamp_mode}\n")
                 f.write(f"write_opts={self.write_opts}\n")
 
@@ -181,8 +218,8 @@ def get_options(args):
         args.canvas_height, 'canvas_height', settings
     )
 
-    ao.cols = get_opt_int(args.cols, 'columns', settings)
-    ao.rows = get_opt_int(args.rows, 'rows', settings)
+    ao.ncols = get_opt_int(args.cols, 'columns', settings)
+    ao.nrows = get_opt_int(args.rows, 'rows', settings)
     ao.margin = get_opt_int(args.margin, 'margin', settings)
     ao.padding = get_opt_int(args.padding, 'padding', settings)
 
@@ -197,10 +234,16 @@ def get_options(args):
     ao.bg_alpha = get_opt_int(args.bg_alpha, 'bg_alpha', settings)
     ao.bg_blur = get_opt_int(args.bg_blur, 'bg_blur', settings)
 
-    ao.shuffle = get_opt_bool(args.shuffle, 'shuffle', settings)
+    ao.shuffle_mode = get_opt_str(
+        args.shuffle_mode, 'shuffle_mode', settings
+    )
+
+    ao.shuffle_count = get_opt_int(
+        args.shuffle_count, 'shuffle_count', settings
+    )
 
     ao.stamp_mode = get_opt_int(args.stamp_mode, 'stamp_mode', settings)
-    
+
     ao.write_opts = get_opt_bool(args.write_opts, 'write_opts', settings)
 
     ao.feature1 = get_feature_args(args.feature_1)
@@ -377,10 +420,23 @@ def get_arguments():
     )
 
     ap.add_argument(
-        '--shuffle',
-        dest='shuffle',
-        action='store_true',
-        help='Shuffle the list of images (random order).'
+        '--shuffle-mode',
+        dest='shuffle_mode',
+        type=str,
+        default='',
+        action='store',
+        help='Flags that control shuffling (random order): i (images), '
+        + 'b (background image), c (columns), r (rows), wc (weighted '
+        + 'columns), wr (weighted rows). Example: --shuffle-mode=ibwc'
+    )
+
+    ap.add_argument(
+        '--shuffle-count',
+        dest='shuffle_count',
+        type=int,
+        default=1,
+        action='store',
+        help='Number of output files to create when using --shuffle-mode.'
     )
 
     ap.add_argument(
@@ -627,8 +683,8 @@ def main():
 
     opts = get_options(get_arguments())
 
-    frame_w = int((opts.canvas_width - (opts.margin * 2)) / opts.cols)
-    frame_h = int((opts.canvas_height - (opts.margin * 2)) / opts.rows)
+    frame_w = int((opts.canvas_width - (opts.margin * 2)) / opts.get_num_columns())
+    frame_h = int((opts.canvas_height - (opts.margin * 2)) / opts.get_num_rows())
     frame_size = (frame_w, frame_h)
 
     inner_w = int(frame_w - (opts.padding * 2))
@@ -637,7 +693,8 @@ def main():
     image = Image.new('RGB', opts.canvas_size(), opts.bg_color)
 
     if opts.has_background_image():
-        # bg_image = Image.open(opts.bg_file)
+        opts.shuffle_bg_images()
+
         bg_image = Image.open(opts.get_bg_file_name())
 
         new_size = get_new_size_zoom(bg_image.size, opts.canvas_size())
@@ -667,11 +724,11 @@ def main():
 
     place_feature(opts, opts.feature2, frame_size)
 
-    if opts.shuffle:
-        opts.shuffle_images()
+    # if opts.do_shuffle_images():
+    opts.shuffle_images()
 
-    for row in range(0, opts.rows):
-        for col in range(0, opts.cols):
+    for row in range(0, opts.get_num_rows()):
+        for col in range(0, opts.get_num_columns()):
             if outside_feature(col, row, opts.feature1, opts.feature2):
                 x = (opts.margin + (col * frame_w) + opts.padding)
                 y = (opts.margin + (row * frame_h) + opts.padding)

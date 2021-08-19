@@ -9,7 +9,7 @@ from PIL import Image, ImageFilter
 from pathlib import Path
 
 
-app_version = '20210818.1'
+app_version = '20210819.1'
 
 app_title = f'montage.py - version {app_version}'
 
@@ -108,21 +108,21 @@ class AppOptions:
                 f.write(f"stamp_mode = {self.stamp_mode}\n")
                 f.write(f"write_opts = {self.write_opts}\n")
 
-                if self.feature1.ncols:
-                    f.write("\n[feature-1]\n")
-                    f.write(f"file = {qs(self.feature1.file_name)}\n")
-                    f.write(f"column = {self.feature1.col}\n")
-                    f.write(f"row = {self.feature1.row}\n")
-                    f.write(f"num_columns = {self.feature1.ncols}\n")
-                    f.write(f"num_rows = {self.feature1.nrows}\n")
+                # if self.feature1.ncols:
+                f.write("\n[feature-1]\n")
+                f.write(f"file = {qs(self.feature1.file_name)}\n")
+                f.write(f"column = {self.feature1.col}\n")
+                f.write(f"row = {self.feature1.row}\n")
+                f.write(f"num_columns = {self.feature1.ncols}\n")
+                f.write(f"num_rows = {self.feature1.nrows}\n")
 
-                if self.feature2.ncols:
-                    f.write("\n[feature-2]\n")
-                    f.write(f"file = {qs(self.feature2.file_name)}\n")
-                    f.write(f"column = {self.feature2.col}\n")
-                    f.write(f"row = {self.feature2.row}\n")
-                    f.write(f"num_columns = {self.feature2.ncols}\n")
-                    f.write(f"num_rows = {self.feature2.nrows}\n")
+                # if self.feature2.ncols:
+                f.write("\n[feature-2]\n")
+                f.write(f"file = {qs(self.feature2.file_name)}\n")
+                f.write(f"column = {self.feature2.col}\n")
+                f.write(f"row = {self.feature2.row}\n")
+                f.write(f"num_columns = {self.feature2.ncols}\n")
+                f.write(f"num_rows = {self.feature2.nrows}\n")
 
                 f.write("\n[images]\n")
                 for img in self.image_list:

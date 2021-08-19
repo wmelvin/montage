@@ -33,8 +33,9 @@ class AppOptions:
         self.feature1 = None
         self.feature2 = None
         self.image_list = []
+        self.bg_image_list = []
         self.placements = []
-        self.bg_file = None
+        # self.bg_file = None
         self.bg_alpha = None
         self.bg_blur = None
         self.shuffle = False
@@ -50,7 +51,11 @@ class AppOptions:
         self.placements.append(Placement(x, y, w, h, file_name))
 
     def has_background_image(self):
-        return (self.bg_file is not None) and (0 < len(self.bg_file))
+        # return (self.bg_file is not None) and (0 < len(self.bg_file))
+        return 0 < len(self.bg_image_list)
+
+    def get_bg_file_name(self):
+        return self.bg_image_list[0]
 
     def background_mask_rgba(self):
         return (0, 0, 0, self.bg_alpha)
@@ -63,6 +68,7 @@ class AppOptions:
             dir = Path.cwd()
         else:
             dir = Path(self.output_dir).expanduser().resolve()
+
         assert dir.is_dir
         assert dir.exists()
 
@@ -109,7 +115,7 @@ class AppOptions:
                     self.bg_color[2]
                 ))
 
-                f.write(f"bg_file={qs(self.bg_file)}\n")
+                # f.write(f"bg_file={qs(self.bg_file)}\n")
                 f.write(f"bg_alpha={self.bg_alpha}\n")
                 f.write(f"bg_blur={self.bg_blur}\n")
                 f.write(f"shuffle={self.shuffle}\n")
@@ -130,9 +136,13 @@ class AppOptions:
                 f.write(f"num_columns={self.feature2.ncols}\n")
                 f.write(f"num_rows={self.feature2.nrows}\n")
 
+                f.write("\n[background-images]\n")
+                for i in self.bg_image_list:
+                    f.write(f"{qs(i)}\n")
+
                 f.write("\n[images]\n")
-                for img in self.image_list:
-                    f.write(f"{qs(img)}\n")
+                for i in self.image_list:
+                    f.write(f"{qs(i)}\n")
 
 
 def get_options(args):
@@ -179,12 +189,18 @@ def get_options(args):
     s = get_opt_str(args.bg_color_str, 'background_rgb', settings)
     ao.bg_color = get_background_rgb((255, 255, 255), s)
 
-    ao.bg_file = get_opt_str(args.bg_file, 'bg_file', settings)
+    # TODO: Leaving the 'bg_file' option for now. Remove later?
+    temp_bg_file = get_opt_str(args.bg_file, 'bg_file', settings)
+    if 0 < len(temp_bg_file):
+        ao.bg_image_list.append(temp_bg_file)
+
     ao.bg_alpha = get_opt_int(args.bg_alpha, 'bg_alpha', settings)
     ao.bg_blur = get_opt_int(args.bg_blur, 'bg_blur', settings)
 
     ao.shuffle = get_opt_bool(args.shuffle, 'shuffle', settings)
-    ao.stamp_mode = get_opt_bool(args.stamp_mode, 'stamp_mode', settings)
+
+    ao.stamp_mode = get_opt_int(args.stamp_mode, 'stamp_mode', settings)
+    
     ao.write_opts = get_opt_bool(args.write_opts, 'write_opts', settings)
 
     ao.feature1 = get_feature_args(args.feature_1)
@@ -202,7 +218,15 @@ def get_options(args):
     ao.image_list = [i for i in args.images]
 
     ao.image_list += [
-        i.strip("'\"") for i in get_option_entries('[images]', file_text)
+        i.strip("'\"") for i in get_option_entries(
+            '[images]', file_text
+        )
+    ]
+
+    ao.bg_image_list += [
+        i.strip("'\"") for i in get_option_entries(
+            '[background-images]', file_text
+        )
     ]
 
     return ao
@@ -613,7 +637,8 @@ def main():
     image = Image.new('RGB', opts.canvas_size(), opts.bg_color)
 
     if opts.has_background_image():
-        bg_image = Image.open(opts.bg_file)
+        # bg_image = Image.open(opts.bg_file)
+        bg_image = Image.open(opts.get_bg_file_name())
 
         new_size = get_new_size_zoom(bg_image.size, opts.canvas_size())
         bg_image = bg_image.resize(new_size)

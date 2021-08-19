@@ -7,6 +7,7 @@ from datetime import datetime
 from PIL import Image, ImageFilter
 from pathlib import Path
 
+MAX_SHUFFLE_COUNT = 99
 
 app_version = '20210819.1'
 
@@ -25,8 +26,10 @@ class AppOptions:
         self.output_file_name = None
         self.canvas_width = None
         self.canvas_height = None
-        self.ncols = None
-        self.nrows = None
+        self.init_ncols = None
+        self.init_nrows = None
+        self.rows = None
+        self.cols = None
         self.margin = None
         self.padding = None
         self.bg_color = None
@@ -35,10 +38,8 @@ class AppOptions:
         self.image_list = []
         self.bg_image_list = []
         self.placements = []
-        # self.bg_file = None
         self.bg_alpha = None
         self.bg_blur = None
-        # self.shuffle = False
         self.shuffle_mode = None
         self.shuffle_count = None
         self.stamp_mode = 0
@@ -53,7 +54,6 @@ class AppOptions:
         self.placements.append(Placement(x, y, w, h, file_name))
 
     def has_background_image(self):
-        # return (self.bg_file is not None) and (0 < len(self.bg_file))
         return 0 < len(self.bg_image_list)
 
     def get_bg_file_name(self):
@@ -73,17 +73,25 @@ class AppOptions:
         random.shuffle(a)
         return a[0]
 
-    def get_num_columns(self):
+    def set_cols_rows(self):
         if 'c' in self.shuffle_mode:
-            return self.get_shuffled(self.ncols, 'wc')
+            self.cols = self.get_shuffled(self.init_ncols, 'wc')
         else:
-            return self.ncols
-
-    def get_num_rows(self):
+            self.cols = self.init_ncols
         if 'r' in self.shuffle_mode:
-            return self.get_shuffled(self.nrows, 'wr')
+            self.rows = self.get_shuffled(self.init_nrows, 'wr')
         else:
-            return self.nrows
+            self.rows = self.init_nrows
+
+    def get_ncols(self):
+        if self.cols is None:
+            self.set_cols_rows()
+        return self.cols
+
+    def get_nrows(self):
+        if self.rows is None:
+            self.set_cols_rows()
+        return self.rows
 
     def do_shuffle_images(self):
         return 'i' in self.shuffle_mode
@@ -99,7 +107,19 @@ class AppOptions:
         if self.do_shuffle_bg_images():
             random.shuffle(self.bg_image_list)
 
-    def image_file_name(self):
+    def get_image_count(self):
+        if len(self.shuffle_mode) == 0:
+            return 1
+        else:
+            return min(self.shuffle_count, MAX_SHUFFLE_COUNT)
+
+    def prepare(self):
+        self.placements.clear()
+        self.set_cols_rows()
+        self.shuffle_bg_images()
+        self.shuffle_images()
+
+    def image_file_name(self, image_num):
         if len(self.output_dir) == 0:
             dir = Path.cwd()
         else:
@@ -110,14 +130,20 @@ class AppOptions:
 
         p = Path(self.output_file_name)
 
+        if 1 < self.shuffle_count:
+            p = Path('{0}-{1:02d}'.format(
+                p.with_suffix(''),
+                image_num)
+            ).with_suffix(p.suffix)
+
         if self.stamp_mode == 1:
-            # Mode 1: date_time stamp at left of file name.
+            #  Mode 1: date_time stamp at left of file name.
             p = Path('{0}_{1}'.format(
                 self.dt_stamp,
                 p.with_suffix(''))
             ).with_suffix(p.suffix)
         elif self.stamp_mode == 2:
-            # Mode 2: date_time stamp at right of file name.
+            #  Mode 2: date_time stamp at right of file name.
             p = Path('{0}_{1}'.format(
                 p.with_suffix(''),
                 self.dt_stamp)
@@ -125,9 +151,9 @@ class AppOptions:
 
         return str(dir.joinpath(p))
 
-    def write_options(self):
+    def write_options(self, image_file_name):
         if self.write_opts:
-            p = Path(self.image_file_name())
+            p = Path(image_file_name)
 
             file_name = str(Path('{0}_{1}'.format(
                 p.with_suffix(''), 'options')
@@ -140,8 +166,8 @@ class AppOptions:
                 f.write(f"output_dir={qs(self.output_dir)}\n")
                 f.write(f"canvas_width={self.canvas_width}\n")
                 f.write(f"canvas_height={self.canvas_height}\n")
-                f.write(f"columns={self.ncols}\n")
-                f.write(f"rows={self.nrows}\n")
+                f.write(f"columns={self.init_ncols}\n")
+                f.write(f"rows={self.init_nrows}\n")
                 f.write(f"margin={self.margin}\n")
                 f.write(f"padding={self.padding}\n")
 
@@ -151,7 +177,6 @@ class AppOptions:
                     self.bg_color[2]
                 ))
 
-                # f.write(f"bg_file={qs(self.bg_file)}\n")
                 f.write(f"bg_alpha={self.bg_alpha}\n")
                 f.write(f"bg_blur={self.bg_blur}\n")
                 f.write(f"shuffle_mode={self.shuffle_mode}\n")
@@ -218,18 +243,16 @@ def get_options(args):
         args.canvas_height, 'canvas_height', settings
     )
 
-    ao.ncols = get_opt_int(args.cols, 'columns', settings)
-    ao.nrows = get_opt_int(args.rows, 'rows', settings)
+    ao.init_ncols = get_opt_int(args.cols, 'columns', settings)
+
+    ao.init_nrows = get_opt_int(args.rows, 'rows', settings)
+
     ao.margin = get_opt_int(args.margin, 'margin', settings)
+
     ao.padding = get_opt_int(args.padding, 'padding', settings)
 
     s = get_opt_str(args.bg_color_str, 'background_rgb', settings)
     ao.bg_color = get_background_rgb((255, 255, 255), s)
-
-    # TODO: Leaving the 'bg_file' option for now. Remove later?
-    temp_bg_file = get_opt_str(args.bg_file, 'bg_file', settings)
-    if 0 < len(temp_bg_file):
-        ao.bg_image_list.append(temp_bg_file)
 
     ao.bg_alpha = get_opt_int(args.bg_alpha, 'bg_alpha', settings)
     ao.bg_blur = get_opt_int(args.bg_blur, 'bg_blur', settings)
@@ -678,13 +701,13 @@ def get_crop_box(current_size, target_size):
     return (x1, y1, x2, y2)
 
 
-def main():
-    print(f"\n{app_title}\n")
-
-    opts = get_options(get_arguments())
-
-    frame_w = int((opts.canvas_width - (opts.margin * 2)) / opts.get_num_columns())
-    frame_h = int((opts.canvas_height - (opts.margin * 2)) / opts.get_num_rows())
+def create_image(opts: AppOptions, image_num: int):
+    frame_w = int(
+        (opts.canvas_width - (opts.margin * 2)) / opts.get_ncols()
+    )
+    frame_h = int(
+        (opts.canvas_height - (opts.margin * 2)) / opts.get_nrows()
+    )
     frame_size = (frame_w, frame_h)
 
     inner_w = int(frame_w - (opts.padding * 2))
@@ -693,7 +716,7 @@ def main():
     image = Image.new('RGB', opts.canvas_size(), opts.bg_color)
 
     if opts.has_background_image():
-        opts.shuffle_bg_images()
+        # opts.shuffle_bg_images()
 
         bg_image = Image.open(opts.get_bg_file_name())
 
@@ -724,11 +747,10 @@ def main():
 
     place_feature(opts, opts.feature2, frame_size)
 
-    # if opts.do_shuffle_images():
-    opts.shuffle_images()
+    # opts.shuffle_images()
 
-    for row in range(0, opts.get_num_rows()):
-        for col in range(0, opts.get_num_columns()):
+    for row in range(0, opts.get_nrows()):
+        for col in range(0, opts.get_ncols()):
             if outside_feature(col, row, opts.feature1, opts.feature2):
                 x = (opts.margin + (col * frame_w) + opts.padding)
                 y = (opts.margin + (row * frame_h) + opts.padding)
@@ -747,11 +769,22 @@ def main():
             img = img.resize(new_size)
             image.paste(img, new_pos)
 
-    print(f"\nCreating image '{opts.image_file_name()}'")
+    file_name = opts.image_file_name(image_num)
 
-    image.save(opts.image_file_name())
+    print(f"\nCreating image '{file_name}'")
 
-    opts.write_options()
+    image.save(file_name)
+
+    opts.write_options(file_name)
+
+
+def main():
+    print(f"\n{app_title}\n")
+    opts = get_options(get_arguments())
+    n_images = opts.get_image_count()
+    for i in range(0, n_images):
+        opts.prepare()
+        create_image(opts, i + 1)
 
     print(f"\nDone ({app_title}).")
 

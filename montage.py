@@ -9,7 +9,7 @@ from pathlib import Path
 
 MAX_SHUFFLE_COUNT = 99
 
-app_version = '20210819.1'
+app_version = '20210820.1'
 
 app_title = f'montage.py - version {app_version}'
 
@@ -47,6 +47,14 @@ class AppOptions:
         self.dt_stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.output_dir = None
 
+        #  TODO: Add args, opts, and defaults.
+        # self.frame_width = 20
+        # self.frame_rgba = (0, 50, 0, 255)
+        # self.border_width = 8
+        # self.border_rgba = (0, 50, 0, 40)
+        self.border_width = None
+        self.border_rgba = None
+
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
 
@@ -61,6 +69,18 @@ class AppOptions:
 
     def background_mask_rgba(self):
         return (0, 0, 0, self.bg_alpha)
+
+    # def frame_rgb(self):
+    #     return self.frame_rgba[:3]
+
+    # def frame_mask_rgba(self):
+    #     return (0, 0, 0, self.frame_rgba[3])
+
+    def border_rgb(self):
+        return self.border_rgba[:3]
+
+    def border_mask_rgba(self):
+        return (0, 0, 0, self.border_rgba[3])
 
     def get_shuffled(self, value, weighted_flag):
         if weighted_flag in self.shuffle_mode:
@@ -161,6 +181,11 @@ class AppOptions:
 
             print(f"\nWriting options to '{file_name}'\n")
             with open(file_name, 'w') as f:
+                f.write("# Created {0} by {1}\n".format(
+                    datetime.now().strftime('%Y-%m-%d %H:%M'),
+                    app_title
+                ))
+
                 f.write("\n[settings]\n")
                 f.write(f"output_file={qs(self.output_file_name)}\n")
                 f.write(f"output_dir={qs(self.output_dir)}\n")
@@ -170,6 +195,14 @@ class AppOptions:
                 f.write(f"rows={self.init_nrows}\n")
                 f.write(f"margin={self.margin}\n")
                 f.write(f"padding={self.padding}\n")
+
+                f.write(f"border_width={self.border_width}\n")
+                f.write("border_rgba={0},{1},{2},{3}\n".format(
+                    self.border_rgba[0],
+                    self.border_rgba[1],
+                    self.border_rgba[2],
+                    self.border_rgba[3]
+                ))
 
                 f.write("background_rgb={0},{1},{2}\n".format(
                     self.bg_color[0],
@@ -251,10 +284,16 @@ def get_options(args):
 
     ao.padding = get_opt_int(args.padding, 'padding', settings)
 
+    ao.border_width = get_opt_int(args.border_width, 'border_width', settings)
+
+    s = get_opt_str(args.border_rgba_str, 'border_rgba', settings)
+    ao.border_rgba = get_background_rgba((0, 0, 0, 255), s)
+
     s = get_opt_str(args.bg_color_str, 'background_rgb', settings)
-    ao.bg_color = get_background_rgb((255, 255, 255), s)
+    ao.bg_color = get_background_rgba((255, 255, 255), s)
 
     ao.bg_alpha = get_opt_int(args.bg_alpha, 'bg_alpha', settings)
+
     ao.bg_blur = get_opt_int(args.bg_blur, 'bg_blur', settings)
 
     ao.shuffle_mode = get_opt_str(
@@ -394,9 +433,24 @@ def get_arguments():
         dest='bg_color_str',
         type=str,
         action='store',
-        help='Background color as red,green,blue. '
-        + 'Also accepts r1,g1,b1,r2,g2,b2 where 2nd set is '
-        + 'the background color for the innder frames.'
+        help='Background color as red,green,blue.'
+    )
+
+    ap.add_argument(
+        '--border-width',
+        dest='border_width',
+        type=int,
+        default=0,
+        action='store',
+        help='Border width in pixels.'
+    )
+
+    ap.add_argument(
+        '--border-rgba',
+        dest='border_rgba_str',
+        type=str,
+        action='store',
+        help='Border color as red,green,blue,alpha.'
     )
 
     ap.add_argument(
@@ -520,9 +574,11 @@ def get_opt_str(default, opt_name, content):
 
 def get_opt_int(default, opt_name, content):
     s = get_opt_str(None, opt_name, content)
-    if s is None:
+    if (s is None) or (len(s) == 0):
         return default
     else:
+        assert s.isdigit()
+        # TODO: Handle case of invalid int setting.
         return int(s)
 
 
@@ -587,20 +643,27 @@ def qs(s: str) -> str:
         return s
 
 
-def get_size_and_position(img_size, initial_placement: Placement):
-    scale_w = initial_placement.width / img_size[0]
-    scale_h = initial_placement.height / img_size[1]
+def get_size_and_position(img_size, initial_placement: Placement, border=0):
+    w = initial_placement.width
+    h = initial_placement.height
+    img_w = img_size[0]
+    img_h = img_size[1]
+    scale_w = (w - (border * 2)) / img_w
+    scale_h = (h - (border * 2)) / img_h
     scale_factor = min(scale_w, scale_h)
-    size_width = int(img_size[0] * scale_factor)
-    size_height = int(img_size[1] * scale_factor)
-    if size_width < initial_placement.width:
-        add_x = int((initial_placement.width - size_width) / 2)
+    size_width = int(img_w * scale_factor)
+    size_height = int(img_h * scale_factor)
+
+    if size_width < w:
+        add_x = int((w - size_width) / 2)
     else:
         add_x = 0
-    if size_height < initial_placement.height:
-        add_y = int((initial_placement.height - size_height) / 2)
+
+    if size_height < h:
+        add_y = int((h - size_height) / 2)
     else:
         add_y = 0
+
     new_position = (
         initial_placement.left + add_x,
         initial_placement.top + add_y
@@ -608,7 +671,7 @@ def get_size_and_position(img_size, initial_placement: Placement):
     return ((size_width, size_height), new_position)
 
 
-def get_background_rgb(default, arg_str):
+def get_background_rgba(default, arg_str):
     if arg_str is None:
         return default
 
@@ -633,23 +696,27 @@ def get_background_rgb(default, arg_str):
     if len(a) == 3:
         rgb = (int(a[0]), int(a[1]), int(a[2]))
         return rgb
+    elif len(a) == 4:
+        rgba = (int(a[0]), int(a[1]), int(a[2]), int(a[3]))
+        return rgba
     else:
         print(
             "WARNING: Invalid backround color setting. ",
-            "Expecting three numbers separated by commas. ",
+            "Expecting numeric color values separated by commas",
+            "('r,g,b' or 'r,g,b,a'). ",
             "Using default."
         )
         return default
 
 
-def place_feature(opts: AppOptions, feat_attr, frame_size):
+def place_feature(opts: AppOptions, feat_attr, cell_size):
     if feat_attr.nrows and feat_attr.ncols:
         assert(0 < feat_attr.nrows)
         assert(0 < feat_attr.ncols)
-        x = opts.margin + ((feat_attr.col - 1) * frame_size[0]) + opts.padding
-        y = opts.margin + ((feat_attr.row - 1) * frame_size[1]) + opts.padding
-        w = int((frame_size[0] * feat_attr.ncols) - (opts.padding * 2))
-        h = int((frame_size[1] * feat_attr.nrows) - (opts.padding * 2))
+        x = opts.margin + ((feat_attr.col - 1) * cell_size[0]) + opts.padding
+        y = opts.margin + ((feat_attr.row - 1) * cell_size[1]) + opts.padding
+        w = int((cell_size[0] * feat_attr.ncols) - (opts.padding * 2))
+        h = int((cell_size[1] * feat_attr.nrows) - (opts.padding * 2))
         opts.add_placement(x, y, w, h, feat_attr.file_name)
 
 
@@ -701,17 +768,31 @@ def get_crop_box(current_size, target_size):
     return (x1, y1, x2, y2)
 
 
+# def prepare_image(img, opts: AppOptions, new_size):
+#     img = img.resize(new_size)
+
+#     # if 0 < opts.border_width:
+#     #     border_image = Image.new('RGB', new_size, opts.border_rgb())
+#        # border_mask = Image.new(
+#        #     'RGBA', border_image.size, (0, 0, 0, opts.border_mask_rgba())
+#        # )
+#     # box = (margin, margin, margin + cell_w, margin + cell_h)
+#     # image.paste(border_image, box, mask=border_mask)
+
+#     return img
+
+
 def create_image(opts: AppOptions, image_num: int):
-    frame_w = int(
+    cell_w = int(
         (opts.canvas_width - (opts.margin * 2)) / opts.get_ncols()
     )
-    frame_h = int(
+    cell_h = int(
         (opts.canvas_height - (opts.margin * 2)) / opts.get_nrows()
     )
-    frame_size = (frame_w, frame_h)
+    cell_size = (cell_w, cell_h)
 
-    inner_w = int(frame_w - (opts.padding * 2))
-    inner_h = int(frame_h - (opts.padding * 2))
+    inner_w = int(cell_w - (opts.padding * 2))
+    inner_h = int(cell_h - (opts.padding * 2))
 
     image = Image.new('RGB', opts.canvas_size(), opts.bg_color)
 
@@ -743,30 +824,65 @@ def create_image(opts: AppOptions, image_num: int):
 
         image.paste(bg_image, (0, 0), mask=bg_mask)
 
-    place_feature(opts, opts.feature1, frame_size)
+    # if 0 < opts.frame_width:
+    #     # frame_image = Image.new(
+    #     #     'RGB', opts.canvas_size(), opts.frame_rgb()
+    #     # )
+    #     # frame_mask = Image.new(
+    #     #     'RGBA', frame_image.size, opts.frame_mask_rgba()
+    #     # )
+    #     frame_image = Image.new(
+    #         'RGBA', opts.canvas_size(), (0, 0, 0, 0)
+    #     )
 
-    place_feature(opts, opts.feature2, frame_size)
+    #     draw = ImageDraw.Draw(frame_image)
+    #     xy = (0, 0, opts.canvas_width, opts.canvas_height)
+    #     draw.rectangle(xy, outline=opts.frame_rgb(), width=opts.frame_width)
+
+    #     # image.paste(frame_image, (0, 0), mask=frame_mask)
+    #     image.paste(frame_image, (0, 0))
+
+    place_feature(opts, opts.feature1, cell_size)
+
+    place_feature(opts, opts.feature2, cell_size)
 
     # opts.shuffle_images()
 
     for row in range(0, opts.get_nrows()):
         for col in range(0, opts.get_ncols()):
             if outside_feature(col, row, opts.feature1, opts.feature2):
-                x = (opts.margin + (col * frame_w) + opts.padding)
-                y = (opts.margin + (row * frame_h) + opts.padding)
+                x = (opts.margin + (col * cell_w) + opts.padding)
+                y = (opts.margin + (row * cell_h) + opts.padding)
                 opts.add_placement(x, y, inner_w, inner_h)
 
     i = 0
     for placement in opts.placements:
         if i < len(opts.image_list):
+
             if len(placement.file_name) == 0:
                 image_name = opts.image_list[i]
                 i += 1
             else:
                 image_name = placement.file_name
+
             img = Image.open(image_name)
+
             new_size, new_pos = get_size_and_position(img.size, placement)
+
+            if 0 < opts.border_width:
+                border_image = Image.new('RGB', new_size, opts.border_rgb())
+                border_mask = Image.new(
+                    'RGBA',
+                    border_image.size,
+                    opts.border_mask_rgba()
+                )
+                image.paste(border_image, new_pos, mask=border_mask)
+                new_size, new_pos = get_size_and_position(
+                    img.size, placement, opts.border_width
+                )
+
             img = img.resize(new_size)
+
             image.paste(img, new_pos)
 
     file_name = opts.image_file_name(image_num)

@@ -46,12 +46,6 @@ class AppOptions:
         self.write_opts = False
         self.dt_stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.output_dir = None
-
-        #  TODO: Add args, opts, and defaults.
-        # self.frame_width = 20
-        # self.frame_rgba = (0, 50, 0, 255)
-        # self.border_width = 8
-        # self.border_rgba = (0, 50, 0, 40)
         self.border_width = None
         self.border_rgba = None
 
@@ -69,12 +63,6 @@ class AppOptions:
 
     def background_mask_rgba(self):
         return (0, 0, 0, self.bg_alpha)
-
-    # def frame_rgb(self):
-    #     return self.frame_rgba[:3]
-
-    # def frame_mask_rgba(self):
-    #     return (0, 0, 0, self.frame_rgba[3])
 
     def border_rgb(self):
         return self.border_rgba[:3]
@@ -768,20 +756,6 @@ def get_crop_box(current_size, target_size):
     return (x1, y1, x2, y2)
 
 
-# def prepare_image(img, opts: AppOptions, new_size):
-#     img = img.resize(new_size)
-
-#     # if 0 < opts.border_width:
-#     #     border_image = Image.new('RGB', new_size, opts.border_rgb())
-#        # border_mask = Image.new(
-#        #     'RGBA', border_image.size, (0, 0, 0, opts.border_mask_rgba())
-#        # )
-#     # box = (margin, margin, margin + cell_w, margin + cell_h)
-#     # image.paste(border_image, box, mask=border_mask)
-
-#     return img
-
-
 def create_image(opts: AppOptions, image_num: int):
     cell_w = int(
         (opts.canvas_width - (opts.margin * 2)) / opts.get_ncols()
@@ -797,8 +771,6 @@ def create_image(opts: AppOptions, image_num: int):
     image = Image.new('RGB', opts.canvas_size(), opts.bg_color)
 
     if opts.has_background_image():
-        # opts.shuffle_bg_images()
-
         bg_image = Image.open(opts.get_bg_file_name())
 
         new_size = get_new_size_zoom(bg_image.size, opts.canvas_size())
@@ -824,29 +796,9 @@ def create_image(opts: AppOptions, image_num: int):
 
         image.paste(bg_image, (0, 0), mask=bg_mask)
 
-    # if 0 < opts.frame_width:
-    #     # frame_image = Image.new(
-    #     #     'RGB', opts.canvas_size(), opts.frame_rgb()
-    #     # )
-    #     # frame_mask = Image.new(
-    #     #     'RGBA', frame_image.size, opts.frame_mask_rgba()
-    #     # )
-    #     frame_image = Image.new(
-    #         'RGBA', opts.canvas_size(), (0, 0, 0, 0)
-    #     )
-
-    #     draw = ImageDraw.Draw(frame_image)
-    #     xy = (0, 0, opts.canvas_width, opts.canvas_height)
-    #     draw.rectangle(xy, outline=opts.frame_rgb(), width=opts.frame_width)
-
-    #     # image.paste(frame_image, (0, 0), mask=frame_mask)
-    #     image.paste(frame_image, (0, 0))
-
     place_feature(opts, opts.feature1, cell_size)
 
     place_feature(opts, opts.feature2, cell_size)
-
-    # opts.shuffle_images()
 
     for row in range(0, opts.get_nrows()):
         for col in range(0, opts.get_ncols()):

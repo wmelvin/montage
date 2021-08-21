@@ -4,12 +4,12 @@ import argparse
 import random
 from collections import namedtuple
 from datetime import datetime
-from PIL import Image, ImageFilter
+from PIL import Image, ImageFilter, ImageOps
 from pathlib import Path
 
 MAX_SHUFFLE_COUNT = 99
 
-app_version = '20210820.1'
+app_version = '20210821.1'
 
 app_title = f'montage.py - version {app_version}'
 
@@ -818,6 +818,8 @@ def create_image(opts: AppOptions, image_num: int):
                 image_name = placement.file_name
 
             img = Image.open(image_name)
+
+            img = ImageOps.exif_transpose(img)
 
             new_size, new_pos = get_size_and_position(img.size, placement)
 

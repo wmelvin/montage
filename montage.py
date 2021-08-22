@@ -292,8 +292,11 @@ class MontageOptions:
 
             warn_old_settings(settings)
 
+            # self.output_file_name = get_opt_str(
+            #     defaults.file_name, 'output_file', settings
+            # )
             self.output_file_name = get_opt_str(
-                defaults.file_name, 'output_file', settings
+                None, 'output_file', settings
             )
 
             self.output_dir = get_opt_str('', 'output_dir', settings)
@@ -305,7 +308,6 @@ class MontageOptions:
             self.canvas_height = get_opt_int(
                 defaults.canvas_height, 'canvas_height', settings
             )
-
 
     def load(self, args, defaults: MontageDefaults, settings_file=None):
         if args is None and settings_file is None:
@@ -336,6 +338,13 @@ class MontageOptions:
 
             if args.canvas_height is not None:
                 self.canvas_height = args.canvas_height
+
+        #  Use defaults for options not already set.
+        if self.output_file_name is None:
+            self.output_file_name = defaults.file_name
+
+        if self.canvas_height is None:
+            self.canvas_height = defaults.canvas_height
 
     # ao.init_ncols = get_opt_int(args.cols, 'columns', settings)
 
@@ -513,7 +522,9 @@ def get_options(args):
     return ao
 
 
-def get_arguments(defaults: MontageDefaults):
+# def get_arguments(defaults: MontageDefaults):
+
+def get_arguments():
     # default_canvas_width = 640
     # default_canvas_height = 480
     # default_margin = 10
@@ -536,7 +547,6 @@ def get_arguments(defaults: MontageDefaults):
     ap.add_argument(
         '-o', '--output-file',
         dest='output_file',
-        default=defaults.file_name,
         action='store',
         help='Name of output file.'
     )
@@ -588,7 +598,6 @@ def get_arguments(defaults: MontageDefaults):
         '-m', '--margin',
         dest='margin',
         type=int,
-        default=defaults.margin,
         action='store',
         help='Margin in pixels.'
     )
@@ -597,7 +606,6 @@ def get_arguments(defaults: MontageDefaults):
         '-p', '--padding',
         dest='padding',
         type=int,
-        default=defaults.padding,
         action='store',
         help='Padding in pixels.'
     )
@@ -614,7 +622,6 @@ def get_arguments(defaults: MontageDefaults):
         '--border-width',
         dest='border_width',
         type=int,
-        default=0,
         action='store',
         help='Border width in pixels.'
     )
@@ -638,7 +645,6 @@ def get_arguments(defaults: MontageDefaults):
         '--background-blur',
         dest='bg_blur',
         type=int,
-        default=defaults.bg_blur,
         action='store',
         help='Blur radius for background image (0 = none).'
     )
@@ -665,7 +671,6 @@ def get_arguments(defaults: MontageDefaults):
         '--shuffle-mode',
         dest='shuffle_mode',
         type=str,
-        default='',
         action='store',
         help='Flags that control shuffling (random order): i (images), '
         + 'b (background image), c (columns), r (rows), wc (weighted '
@@ -676,7 +681,6 @@ def get_arguments(defaults: MontageDefaults):
         '--shuffle-count',
         dest='shuffle_count',
         type=int,
-        default=1,
         action='store',
         help='Number of output files to create when using --shuffle-mode.'
     )
@@ -685,7 +689,6 @@ def get_arguments(defaults: MontageDefaults):
         '--stamp-mode',
         dest='stamp_mode',
         type=int,
-        default=0,
         action='store',
         help='Mode for adding a date_time stamp to the output file name: '
         + '0 = none, 1 = at left of file name, 2 = at right of file name.'
@@ -1038,7 +1041,10 @@ def main():
     print(f"\n{app_title}\n")
 
     defaults = MontageDefaults()
-    args = get_arguments(defaults)
+
+    # args = get_arguments(defaults)
+    args = get_arguments()
+
     opts = MontageOptions()
     opts.load(args, defaults)
 

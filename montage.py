@@ -22,8 +22,20 @@ FeatureImage = namedtuple(
 Placement = namedtuple('Placement', 'left, top, width, height, file_name')
 
 
-class AppOptions:
+class MontageDefaults:
+
     def __init__(self):
+        self.file_name = 'output.jpg'
+        self.canvas_width = 640
+        self.canvas_height = 480
+        self.margin = 10
+        self.padding = 10
+        self.bg_blur = 3
+
+
+class MontageOptions:
+    def __init__(self):
+        self._dt_stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.output_file_name = None
         self.output_dir = None
         self.canvas_width = None
@@ -42,7 +54,6 @@ class AppOptions:
         self.shuffle_count = None
         self.stamp_mode = 0
         self.write_opts = False
-        self.dt_stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.border_width = None
         self.border_rgba = None
 
@@ -152,14 +163,14 @@ class AppOptions:
         if self.stamp_mode == 1:
             #  Mode 1: date_time stamp at left of file name.
             p = Path('{0}_{1}'.format(
-                self.dt_stamp,
+                self._dt_stamp,
                 p.with_suffix(''))
             ).with_suffix(p.suffix)
         elif self.stamp_mode == 2:
             #  Mode 2: date_time stamp at right of file name.
             p = Path('{0}_{1}'.format(
                 p.with_suffix(''),
-                self.dt_stamp)
+                self._dt_stamp)
             ).with_suffix(p.suffix)
 
         return str(dir.joinpath(p))
@@ -267,6 +278,124 @@ class AppOptions:
                 sys.stderr.write(f"{message}\n")
             sys.exit(1)
 
+    def load_from_file(self, file_name, defaults):
+        if file_name is not None:
+            p = Path(file_name).expanduser().resolve()
+            if not p.exists():
+                sys.stderr.write(f"ERROR: File not found: {file_name}")
+                sys.exit(1)
+
+            with open(p, 'r') as f:
+                file_text = f.readlines()
+
+            settings = get_option_entries('[settings]', file_text)
+
+            warn_old_settings(settings)
+
+            self.output_file_name = get_opt_str(
+                defaults.file_name, 'output_file', settings
+            )
+
+            self.output_dir = get_opt_str('', 'output_dir', settings)
+
+            self.canvas_width = get_opt_int(
+                defaults.canvas_width, 'canvas_width', settings
+            )
+
+            self.canvas_height = get_opt_int(
+                defaults.canvas_height, 'canvas_height', settings
+            )
+
+
+    def load(self, args, defaults: MontageDefaults, settings_file=None):
+        if args is None and settings_file is None:
+            sys.stderr.write(
+                "ERROR: No args object, and no settings file name.\n"
+            )
+            sys.exit(1)
+
+        if settings_file is None:
+            self.load_from_file(args.settings_file, defaults)
+        else:
+            self.load_from_file(settings_file, defaults)
+
+        if args is not None:
+            #  Command line arguments will override settings file.
+            #  Arguments that were not provided either need to be
+            #  None or a default value that indicates it was not
+            #  specified.
+
+            if args.output_file is not None:
+                self.output_file_name = args.output_file
+
+            if args.output_dir is not None:
+                self.output_dir = args.output_dir
+
+            if args.canvas_width is not None:
+                self.canvas_width = args.canvas_width
+
+            if args.canvas_height is not None:
+                self.canvas_height = args.canvas_height
+
+    # ao.init_ncols = get_opt_int(args.cols, 'columns', settings)
+
+    # ao.init_nrows = get_opt_int(args.rows, 'rows', settings)
+
+    # ao.margin = get_opt_int(args.margin, 'margin', settings)
+
+    # ao.padding = get_opt_int(args.padding, 'padding', settings)
+
+    # ao.border_width = get_opt_int(
+    #   args.border_width, 'border_width', settings
+    # )
+
+    # s = get_opt_str(args.border_rgba_str, 'border_rgba', settings)
+    # ao.border_rgba = get_rgba((0, 0, 0, 255), s)
+
+    # s = get_opt_str(args.bg_rgba_str, 'background_rgba', settings)
+    # default_bg_rgba = (255, 255, 255, 255)
+    # ao.bg_rgba = get_rgba(default_bg_rgba, s)
+
+    # ao.bg_blur = get_opt_int(args.bg_blur, 'background_blur', settings)
+
+    # ao.shuffle_mode = get_opt_str(
+    #     args.shuffle_mode, 'shuffle_mode', settings
+    # )
+
+    # ao.shuffle_count = get_opt_int(
+    #     args.shuffle_count, 'shuffle_count', settings
+    # )
+
+    # ao.stamp_mode = get_opt_int(args.stamp_mode, 'stamp_mode', settings)
+
+    # ao.write_opts = get_opt_bool(args.write_opts, 'write_opts', settings)
+
+    # ao.feature1 = get_feature_args(args.feature_1)
+    # if ao.feature1.ncols == 0:
+    #     ao.feature1 = get_opt_feat(
+    #         get_option_entries('[feature-1]', file_text)
+    #     )
+
+    # ao.feature2 = get_feature_args(args.feature_2)
+    # if ao.feature2.ncols == 0:
+    #     ao.feature2 = get_opt_feat(
+    #         get_option_entries('[feature-2]', file_text)
+    #     )
+
+    # ao.image_list = [i for i in args.images]
+
+    # ao.image_list += [
+    #     i.strip("'\"") for i in get_option_entries(
+    #         '[images]', file_text
+    #     )
+    # ]
+
+    # ao.bg_image_list += [
+    #     i.strip("'\"") for i in get_option_entries(
+    #         '[background-images]', file_text
+    #     )
+    # ]
+
 
 def warn_old_settings(settings):
     old_settings = {
@@ -288,7 +417,7 @@ def warn_old_settings(settings):
 
 
 def get_options(args):
-    ao = AppOptions()
+    ao = MontageOptions()
 
     if args.settings_file is None:
         file_text = ''
@@ -384,13 +513,13 @@ def get_options(args):
     return ao
 
 
-def get_arguments():
-    default_canvas_width = 640
-    default_canvas_height = 480
-    default_margin = 10
-    default_padding = 20
-    default_bg_blur = 3
-    default_file_name = 'output.jpg'
+def get_arguments(defaults: MontageDefaults):
+    # default_canvas_width = 640
+    # default_canvas_height = 480
+    # default_margin = 10
+    # default_padding = 20
+    # default_bg_blur = 3
+    # default_file_name = 'output.jpg'
 
     ap = argparse.ArgumentParser(
         description='Create an image montage given a list of image files.'
@@ -407,7 +536,7 @@ def get_arguments():
     ap.add_argument(
         '-o', '--output-file',
         dest='output_file',
-        default=default_file_name,
+        default=defaults.file_name,
         action='store',
         help='Name of output file.'
     )
@@ -424,7 +553,6 @@ def get_arguments():
         '-x', '--canvas-width',
         dest='canvas_width',
         type=int,
-        default=default_canvas_width,
         action='store',
         help='Canvas width in pixels.'
     )
@@ -433,7 +561,7 @@ def get_arguments():
         '-y', '--canvas-height',
         dest='canvas_height',
         type=int,
-        default=default_canvas_height,
+        default=0,
         action='store',
         help='Canvas height in pixels.'
     )
@@ -460,7 +588,7 @@ def get_arguments():
         '-m', '--margin',
         dest='margin',
         type=int,
-        default=default_margin,
+        default=defaults.margin,
         action='store',
         help='Margin in pixels.'
     )
@@ -469,7 +597,7 @@ def get_arguments():
         '-p', '--padding',
         dest='padding',
         type=int,
-        default=default_padding,
+        default=defaults.padding,
         action='store',
         help='Padding in pixels.'
     )
@@ -510,7 +638,7 @@ def get_arguments():
         '--background-blur',
         dest='bg_blur',
         type=int,
-        default=default_bg_blur,
+        default=defaults.bg_blur,
         action='store',
         help='Blur radius for background image (0 = none).'
     )
@@ -747,7 +875,7 @@ def get_rgba(default, arg_str):
         return default
 
 
-def place_feature(opts: AppOptions, feat_attr, cell_size):
+def place_feature(opts: MontageOptions, feat_attr, cell_size):
     if feat_attr.nrows and feat_attr.ncols:
         assert(0 < feat_attr.nrows)
         assert(0 < feat_attr.ncols)
@@ -806,7 +934,7 @@ def get_crop_box(current_size, target_size):
     return (x1, y1, x2, y2)
 
 
-def create_image(opts: AppOptions, image_num: int):
+def create_image(opts: MontageOptions, image_num: int):
     cell_w = int(
         (opts.canvas_width - (opts.margin * 2)) / opts.get_ncols()
     )
@@ -898,16 +1026,37 @@ def create_image(opts: AppOptions, image_num: int):
     opts.write_options(file_name)
 
 
-def main():
-    print(f"\n{app_title}\n")
-    opts = get_options(get_arguments())
+def create_montage(opts: MontageOptions):
     opts.check_options()
     n_images = opts.get_image_count()
     for i in range(0, n_images):
         opts.prepare()
         create_image(opts, i + 1)
 
+
+def main():
+    print(f"\n{app_title}\n")
+
+    defaults = MontageDefaults()
+    args = get_arguments(defaults)
+    opts = MontageOptions()
+    opts.load(args, defaults)
+
+    # create_montage(opts)
+
     print(f"\nDone ({app_title}).")
+
+
+# def main():
+#     print(f"\n{app_title}\n")
+#     opts = get_options(get_arguments())
+#     opts.check_options()
+#     n_images = opts.get_image_count()
+#     for i in range(0, n_images):
+#         opts.prepare()
+#         create_image(opts, i + 1)
+
+#     print(f"\nDone ({app_title}).")
 
 
 if __name__ == "__main__":

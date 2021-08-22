@@ -9,7 +9,7 @@ from pathlib import Path
 
 MAX_SHUFFLE_COUNT = 99
 
-app_version = '20210821.1'
+app_version = '20210822.1'
 
 app_title = f'montage.py - version {app_version}'
 
@@ -24,6 +24,7 @@ Placement = namedtuple('Placement', 'left, top, width, height, file_name')
 class AppOptions:
     def __init__(self):
         self.output_file_name = None
+        self.output_dir = None
         self.canvas_width = None
         self.canvas_height = None
         self.init_ncols = None
@@ -32,22 +33,22 @@ class AppOptions:
         self.cols = None
         self.margin = None
         self.padding = None
-        self.bg_color = None
         self.feature1 = None
         self.feature2 = None
-        self.image_list = []
-        self.bg_image_list = []
-        self.placements = []
-        self.bg_alpha = None
+        self.bg_rgba = None
         self.bg_blur = None
         self.shuffle_mode = None
         self.shuffle_count = None
         self.stamp_mode = 0
         self.write_opts = False
         self.dt_stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        self.output_dir = None
         self.border_width = None
         self.border_rgba = None
+
+        self.image_list = []
+        self.bg_image_list = []
+
+        self.placements = []
 
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
@@ -61,8 +62,11 @@ class AppOptions:
     def get_bg_file_name(self):
         return self.bg_image_list[0]
 
+    def background_rgb(self):
+        return self.bg_rgba[:3]
+
     def background_mask_rgba(self):
-        return (0, 0, 0, self.bg_alpha)
+        return (0, 0, 0, self.bg_rgba[3])
 
     def border_rgb(self):
         return self.border_rgba[:3]
@@ -177,14 +181,25 @@ class AppOptions:
                 f.write("\n[settings]\n")
                 f.write(f"output_file={qs(self.output_file_name)}\n")
                 f.write(f"output_dir={qs(self.output_dir)}\n")
+
                 f.write(f"canvas_width={self.canvas_width}\n")
                 f.write(f"canvas_height={self.canvas_height}\n")
+
+                f.write("background_rgba={0},{1},{2},{3}\n".format(
+                    self.bg_rgba[0],
+                    self.bg_rgba[1],
+                    self.bg_rgba[2],
+                    self.bg_rgba[3]
+                ))
+                f.write(f"bg_blur={self.bg_blur}\n")
+
                 f.write(f"columns={self.init_ncols}\n")
                 f.write(f"rows={self.init_nrows}\n")
                 f.write(f"margin={self.margin}\n")
                 f.write(f"padding={self.padding}\n")
 
                 f.write(f"border_width={self.border_width}\n")
+
                 f.write("border_rgba={0},{1},{2},{3}\n".format(
                     self.border_rgba[0],
                     self.border_rgba[1],
@@ -192,14 +207,6 @@ class AppOptions:
                     self.border_rgba[3]
                 ))
 
-                f.write("background_rgb={0},{1},{2}\n".format(
-                    self.bg_color[0],
-                    self.bg_color[1],
-                    self.bg_color[2]
-                ))
-
-                f.write(f"bg_alpha={self.bg_alpha}\n")
-                f.write(f"bg_blur={self.bg_blur}\n")
                 f.write(f"shuffle_mode={self.shuffle_mode}\n")
                 f.write(f"shuffle_count={self.shuffle_count}\n")
                 f.write(f"stamp_mode={self.stamp_mode}\n")
@@ -275,12 +282,11 @@ def get_options(args):
     ao.border_width = get_opt_int(args.border_width, 'border_width', settings)
 
     s = get_opt_str(args.border_rgba_str, 'border_rgba', settings)
-    ao.border_rgba = get_background_rgba((0, 0, 0, 255), s)
+    ao.border_rgba = get_rgba((0, 0, 0, 255), s)
 
-    s = get_opt_str(args.bg_color_str, 'background_rgb', settings)
-    ao.bg_color = get_background_rgba((255, 255, 255), s)
-
-    ao.bg_alpha = get_opt_int(args.bg_alpha, 'bg_alpha', settings)
+    s = get_opt_str(args.bg_rgba_str, 'background_rgba', settings)
+    default_bg_rgba = (255, 255, 255, 255)
+    ao.bg_rgba = get_rgba(default_bg_rgba, s)
 
     ao.bg_blur = get_opt_int(args.bg_blur, 'bg_blur', settings)
 
@@ -330,7 +336,6 @@ def get_arguments():
     default_canvas_height = 480
     default_margin = 10
     default_padding = 20
-    default_bg_alpha = 64
     default_bg_blur = 3
     default_file_name = 'output.jpg'
 
@@ -417,11 +422,11 @@ def get_arguments():
     )
 
     ap.add_argument(
-        '-b', '--background-rgb',
-        dest='bg_color_str',
+        '-b', '--background-rgba',
+        dest='bg_rgba_str',
         type=str,
         action='store',
-        help='Background color as red,green,blue.'
+        help='Background color as red,green,blue,alpha.'
     )
 
     ap.add_argument(
@@ -446,15 +451,6 @@ def get_arguments():
         dest='bg_file',
         action='store',
         help='Name of image file to use as the background image.'
-    )
-
-    ap.add_argument(
-        '--background-alpha',
-        dest='bg_alpha',
-        type=int,
-        default=default_bg_alpha,
-        action='store',
-        help='Alpha (transparency) value for background image (0..255).'
     )
 
     ap.add_argument(
@@ -659,7 +655,7 @@ def get_size_and_position(img_size, initial_placement: Placement, border=0):
     return ((size_width, size_height), new_position)
 
 
-def get_background_rgba(default, arg_str):
+def get_rgba(default, arg_str):
     if arg_str is None:
         return default
 
@@ -682,14 +678,15 @@ def get_background_rgba(default, arg_str):
         return default
 
     if len(a) == 3:
-        rgb = (int(a[0]), int(a[1]), int(a[2]))
-        return rgb
+        default_alpha = 255
+        rgba = (int(a[0]), int(a[1]), int(a[2]), default_alpha)
+        return rgba
     elif len(a) == 4:
         rgba = (int(a[0]), int(a[1]), int(a[2]), int(a[3]))
         return rgba
     else:
         print(
-            "WARNING: Invalid backround color setting. ",
+            "WARNING: Invalid color setting. ",
             "Expecting numeric color values separated by commas",
             "('r,g,b' or 'r,g,b,a'). ",
             "Using default."
@@ -768,7 +765,7 @@ def create_image(opts: AppOptions, image_num: int):
     inner_w = int(cell_w - (opts.padding * 2))
     inner_h = int(cell_h - (opts.padding * 2))
 
-    image = Image.new('RGB', opts.canvas_size(), opts.bg_color)
+    image = Image.new('RGB', opts.canvas_size(), opts.background_rgb())
 
     if opts.has_background_image():
         bg_image = Image.open(opts.get_bg_file_name())

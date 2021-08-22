@@ -2,6 +2,7 @@
 
 import argparse
 import random
+import sys
 from collections import namedtuple
 from datetime import datetime
 from PIL import Image, ImageFilter, ImageOps
@@ -234,6 +235,38 @@ class AppOptions:
                 for i in self.image_list:
                     f.write(f"{qs(i)}\n")
 
+    def check_options(self):
+        errors = []
+
+        if 0 < len(self.output_dir):
+            if not Path(self.output_dir).exists():
+                errors.append(
+                    f"Output folder not found: '{self.output_dir}'."
+                )
+
+            if not Path(self.output_dir).is_dir():
+                errors.append(
+                    f"Output folder not a directory: '{self.output_dir}'."
+                )
+
+        for file_name in self.image_list:
+            if not Path(file_name).exists():
+                errors.append(
+                    f"Image file not found: '{file_name}'."
+                )
+
+        for file_name in self.bg_image_list:
+            if not Path(file_name).exists():
+                errors.append(
+                    f"Background image file not found: '{file_name}'."
+                )
+
+        if 0 < len(errors):
+            print("\nCANNOT PROCEED")
+            for message in errors:
+                sys.stderr.write(f"{message}\n")
+            sys.exit(1)
+
 
 def warn_old_settings(settings):
     old_settings = {
@@ -262,15 +295,14 @@ def get_options(args):
     else:
         p = Path(args.settings_file).expanduser().resolve()
 
-        # TODO: Check exists, or just let an exception happen?
-        # if not p.exists():
-        #     print(f"ERROR: File not found: {args.settings_file}")
-        #     return
+        if not p.exists():
+            sys.stderr.write(f"ERROR: File not found: {args.settings_file}")
+            sys.exit(1)
 
         with open(p, 'r') as f:
             file_text = f.readlines()
 
-    #  If file_text is empty, the defaults from args will be used.
+    #  If file_text is empty then the defaults from args will be used.
 
     settings = get_option_entries('[settings]', file_text)
 
@@ -869,6 +901,7 @@ def create_image(opts: AppOptions, image_num: int):
 def main():
     print(f"\n{app_title}\n")
     opts = get_options(get_arguments())
+    opts.check_options()
     n_images = opts.get_image_count()
     for i in range(0, n_images):
         opts.prepare()

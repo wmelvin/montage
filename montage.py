@@ -31,6 +31,10 @@ class MontageDefaults:
         self.margin = 10
         self.padding = 10
         self.bg_blur = 3
+        self.ncols = 2
+        self.nrows = 2
+        self.border_rgba = (0, 0, 0, 255)
+        self.background_rgba = (255, 255, 255, 255)
 
 
 class MontageOptions:
@@ -52,14 +56,12 @@ class MontageOptions:
         self.bg_blur = None
         self.shuffle_mode = None
         self.shuffle_count = None
-        self.stamp_mode = 0
-        self.write_opts = False
+        self.stamp_mode = None
+        self.write_opts = None
         self.border_width = None
         self.border_rgba = None
-
         self.image_list = []
         self.bg_image_list = []
-
         self.placements = []
 
     def canvas_size(self):
@@ -278,7 +280,7 @@ class MontageOptions:
                 sys.stderr.write(f"{message}\n")
             sys.exit(1)
 
-    def load_from_file(self, file_name, defaults):
+    def _load_from_file(self, file_name):
         if file_name is not None:
             p = Path(file_name).expanduser().resolve()
             if not p.exists():
@@ -299,15 +301,67 @@ class MontageOptions:
                 None, 'output_file', settings
             )
 
-            self.output_dir = get_opt_str('', 'output_dir', settings)
+            self.output_dir = get_opt_str(
+                None, 'output_dir', settings
+            )
 
             self.canvas_width = get_opt_int(
-                defaults.canvas_width, 'canvas_width', settings
+                None, 'canvas_width', settings
             )
 
             self.canvas_height = get_opt_int(
-                defaults.canvas_height, 'canvas_height', settings
+                None, 'canvas_height', settings
             )
+
+            self.init_ncols = get_opt_int(None, 'columns', settings)
+
+            self.init_nrows = get_opt_int(None, 'rows', settings)
+
+            self.margin = get_opt_int(None, 'margin', settings)
+
+            self.padding = get_opt_int(None, 'padding', settings)
+
+            self.border_width = get_opt_int(None, 'border_width', settings)
+
+            self.border_rgba = get_opt_str(None, 'border_rgba', settings)
+
+            self.bg_rgba = get_opt_str(None, 'background_rgba', settings)
+
+            self.bg_blur = get_opt_int(None, 'background_blur', settings)
+
+            self.shuffle_mode = get_opt_str(None, 'shuffle_mode', settings)
+
+            self.shuffle_count = get_opt_int(None, 'shuffle_count', settings)
+
+    # ao.stamp_mode = get_opt_int(args.stamp_mode, 'stamp_mode', settings)
+
+    # ao.write_opts = get_opt_bool(args.write_opts, 'write_opts', settings)
+
+    # ao.feature1 = get_feature_args(args.feature_1)
+    # if ao.feature1.ncols == 0:
+    #     ao.feature1 = get_opt_feat(
+    #         get_option_entries('[feature-1]', file_text)
+    #     )
+
+    # ao.feature2 = get_feature_args(args.feature_2)
+    # if ao.feature2.ncols == 0:
+    #     ao.feature2 = get_opt_feat(
+    #         get_option_entries('[feature-2]', file_text)
+    #     )
+
+    # ao.image_list = [i for i in args.images]
+
+    # ao.image_list += [
+    #     i.strip("'\"") for i in get_option_entries(
+    #         '[images]', file_text
+    #     )
+    # ]
+
+    # ao.bg_image_list += [
+    #     i.strip("'\"") for i in get_option_entries(
+    #         '[background-images]', file_text
+    #     )
+    # ]
 
     def load(self, args, defaults: MontageDefaults, settings_file=None):
         if args is None and settings_file is None:
@@ -317,9 +371,9 @@ class MontageOptions:
             sys.exit(1)
 
         if settings_file is None:
-            self.load_from_file(args.settings_file, defaults)
+            self._load_from_file(args.settings_file)
         else:
-            self.load_from_file(settings_file, defaults)
+            self._load_from_file(settings_file)
 
         if args is not None:
             #  Command line arguments will override settings file.
@@ -339,41 +393,117 @@ class MontageOptions:
             if args.canvas_height is not None:
                 self.canvas_height = args.canvas_height
 
-        #  Use defaults for options not already set.
+            if args.cols is not None:
+                self.init_ncols = args.cols
+
+            if args.rows is not None:
+                self.init_nrows = args.rows
+
+            if args.margin is not None:
+                self.margin = args.margin
+
+            if args.padding is not None:
+                self.padding = args.padding
+
+            if args.border_width is not None:
+                self.border_width = args.border_width
+
+            if args.border_rgba_str is not None:
+                self.border_rgba = args.border_rgba_str
+
+            if args.bg_rgba_str is not None:
+                self.bg_rgba = args.bg_rgba_str
+
+            if args.bg_blur is not None:
+                self.bg_blur = args.bg_blur
+
+            if args.shuffle_mode is not None:
+                self.shuffle_mode = args.shuffle_mode
+
+            if args.shuffle_count is not None:
+                self.shuffle_count = args.shuffle_count
+
+    # ao.stamp_mode = get_opt_int(args.stamp_mode, 'stamp_mode', settings)
+
+    # ao.write_opts = get_opt_bool(args.write_opts, 'write_opts', settings)
+
+    # ao.feature1 = get_feature_args(args.feature_1)
+    # if ao.feature1.ncols == 0:
+    #     ao.feature1 = get_opt_feat(
+    #         get_option_entries('[feature-1]', file_text)
+    #     )
+
+    # ao.feature2 = get_feature_args(args.feature_2)
+    # if ao.feature2.ncols == 0:
+    #     ao.feature2 = get_opt_feat(
+    #         get_option_entries('[feature-2]', file_text)
+    #     )
+
+    # ao.image_list = [i for i in args.images]
+
+    # ao.image_list += [
+    #     i.strip("'\"") for i in get_option_entries(
+    #         '[images]', file_text
+    #     )
+    # ]
+
+    # ao.bg_image_list += [
+    #     i.strip("'\"") for i in get_option_entries(
+    #         '[background-images]', file_text
+    #     )
+    # ]
+
+        # -- Use defaults for options not already set.
+
         if self.output_file_name is None:
             self.output_file_name = defaults.file_name
+
+        if self.output_dir is None:
+            self.output_dir = ''
+
+        if self.canvas_width is None:
+            self.canvas_width = defaults.canvas_width
 
         if self.canvas_height is None:
             self.canvas_height = defaults.canvas_height
 
-    # ao.init_ncols = get_opt_int(args.cols, 'columns', settings)
+        if self.init_ncols is None:
+            self.init_ncols = defaults.ncols
 
-    # ao.init_nrows = get_opt_int(args.rows, 'rows', settings)
+        if self.init_nrows is None:
+            self.init_nrows = defaults.nrows
 
-    # ao.margin = get_opt_int(args.margin, 'margin', settings)
+        if self.margin is None:
+            self.margin = defaults.margin
 
-    # ao.padding = get_opt_int(args.padding, 'padding', settings)
+        if self.padding is None:
+            self.padding = defaults.padding
 
-    # ao.border_width = get_opt_int(
-    #   args.border_width, 'border_width', settings
-    # )
+        if self.border_width is None:
+            self.border_width = 0
 
-    # s = get_opt_str(args.border_rgba_str, 'border_rgba', settings)
-    # ao.border_rgba = get_rgba((0, 0, 0, 255), s)
+        if self.border_rgba is None:
+            self.border_rgba = defaults.border_rgba
+        elif type(self.border_rgba) == str:
+            self.border_rgba = get_rgba(
+                defaults.border_rgba, self.border_rgba
+            )
 
-    # s = get_opt_str(args.bg_rgba_str, 'background_rgba', settings)
-    # default_bg_rgba = (255, 255, 255, 255)
-    # ao.bg_rgba = get_rgba(default_bg_rgba, s)
+        if self.bg_rgba is None:
+            self.bg_rgba = defaults.background_rgba
+        elif type(self.bg_rgba) == str:
+            self.bg_rgba = get_rgba(
+                defaults.background_rgba, self.bg_rgba
+            )
 
-    # ao.bg_blur = get_opt_int(args.bg_blur, 'background_blur', settings)
+        if self.bg_blur is None:
+            self.bg_blur = defaults.bg_blur
 
-    # ao.shuffle_mode = get_opt_str(
-    #     args.shuffle_mode, 'shuffle_mode', settings
-    # )
+        if self.shuffle_mode is None:
+            self.shuffle_mode = 0
 
-    # ao.shuffle_count = get_opt_int(
-    #     args.shuffle_count, 'shuffle_count', settings
-    # )
+        if self.shuffle_count is None:
+            self.shuffle_count = 1
 
     # ao.stamp_mode = get_opt_int(args.stamp_mode, 'stamp_mode', settings)
 

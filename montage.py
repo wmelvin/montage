@@ -191,7 +191,7 @@ class AppOptions:
                     self.bg_rgba[2],
                     self.bg_rgba[3]
                 ))
-                f.write(f"bg_blur={self.bg_blur}\n")
+                f.write(f"background_blur={self.bg_blur}\n")
 
                 f.write(f"columns={self.init_ncols}\n")
                 f.write(f"rows={self.init_nrows}\n")
@@ -235,6 +235,25 @@ class AppOptions:
                     f.write(f"{qs(i)}\n")
 
 
+def warn_old_settings(settings):
+    old_settings = {
+        'background_rgb': "Replaced by 'background_rgba'",
+        'bg_alpha': "Replaced by 'background_rgba'",
+        'bg_blur': "Replaced by 'background_blur'"
+    }
+    for line in settings:
+        a = line.split('=', 1)
+        if len(a) == 2:
+            setting_name = a[0].strip()
+            if setting_name in old_settings.keys():
+                print(
+                    "WARNING: Obsolete setting '{0}': {1}".format(
+                        setting_name,
+                        old_settings[setting_name]
+                    )
+                )
+
+
 def get_options(args):
     ao = AppOptions()
 
@@ -254,6 +273,8 @@ def get_options(args):
     #  If file_text is empty, the defaults from args will be used.
 
     settings = get_option_entries('[settings]', file_text)
+
+    warn_old_settings(settings)
 
     ao.output_file_name = get_opt_str(
         args.output_file, 'output_file', settings
@@ -288,7 +309,7 @@ def get_options(args):
     default_bg_rgba = (255, 255, 255, 255)
     ao.bg_rgba = get_rgba(default_bg_rgba, s)
 
-    ao.bg_blur = get_opt_int(args.bg_blur, 'bg_blur', settings)
+    ao.bg_blur = get_opt_int(args.bg_blur, 'background_blur', settings)
 
     ao.shuffle_mode = get_opt_str(
         args.shuffle_mode, 'shuffle_mode', settings

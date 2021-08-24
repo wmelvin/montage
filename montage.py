@@ -63,7 +63,7 @@ class MontageOptions:
         self.image_list = []
         self.bg_image_list = []
         self._placements = []
-        self._messages = []
+        self._log = []
 
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
@@ -73,9 +73,6 @@ class MontageOptions:
 
     def get_placements_list(self):
         return self._placements
-
-    def add_message(self, message):
-        self._messages.append(message)
 
     def has_background_image(self):
         return 0 < len(self.bg_image_list)
@@ -146,9 +143,16 @@ class MontageOptions:
         else:
             return min(self.shuffle_count, MAX_SHUFFLE_COUNT)
 
+    def log_add(self, message):
+        self._log.append(message)
+
+    def log_say(self, message):
+        print(message)
+        self._log.append(message)
+
     def prepare(self):
         self._placements.clear()
-        self._messages.clear()
+        self._log.clear()
         self.set_cols_rows()
         self.shuffle_bg_images()
         self.shuffle_images()
@@ -256,9 +260,10 @@ class MontageOptions:
 
                 f.write(self.get_options_as_str())
 
-                if 0 < len(self._messages):
-                    f.write("\n[messages]\n")
-                    f.writelines(self._messages)
+                if 0 < len(self._log):
+                    f.write("\n[log]\n")
+                    for i in self._log:
+                        f.write(f"{i}\n")
 
     def check_options(self):
         errors = []
@@ -986,7 +991,7 @@ def create_image(opts: MontageOptions, image_num: int):
             else:
                 image_name = placement.file_name
 
-            opts.add_message(f"Placing image '{image_name}")
+            opts.log_say(f"Placing image '{image_name}")
 
             img = Image.open(image_name)
 
@@ -994,8 +999,8 @@ def create_image(opts: MontageOptions, image_num: int):
 
             new_size, new_pos = get_size_and_position(img.size, placement)
 
-            opts.add_message(f"  new_size='{new_size}")
-            opts.add_message(f"  new_pos='{new_pos}")
+            opts.log_add(f"new_size='{new_size}")
+            opts.log_add(f"new_pos='{new_pos}")
 
             if 0 < opts.border_width:
                 border_image = Image.new('RGB', new_size, opts.border_rgb())

@@ -261,7 +261,7 @@ class MontageOptions:
                 f.write(self.get_options_as_str())
 
                 if 0 < len(self._log):
-                    f.write("\n[log]\n")
+                    f.write("\n\n[LOG]\n")
                     for i in self._log:
                         f.write(f"{i}\n")
 
@@ -914,15 +914,15 @@ def get_crop_box(current_size, target_size):
     trg_w, trg_h = target_size
 
     if trg_w < cur_w:
-        x1 = int((cur_w - trg_w) / 2)
-        x2 = cur_w - x1
+        x1 = int((cur_w - trg_w) // 2)
+        x2 = cur_w - (x1 + 1)
     else:
         x1 = 0
         x2 = trg_w
 
     if trg_h < cur_h:
-        y1 = int((cur_h - trg_h) / 2)
-        y2 = cur_h - y1
+        y1 = int((cur_h - trg_h) // 2)
+        y2 = cur_h - (y1 + 1)
     else:
         y1 = 0
         y2 = trg_h
@@ -942,20 +942,31 @@ def create_image(opts: MontageOptions, image_num: int):
     inner_w = int(cell_w - (opts.padding * 2))
     inner_h = int(cell_h - (opts.padding * 2))
 
+    opts.log_say(f"Creating new image (canvas size = {opts.canvas_size()})")
+    opts.log_add(f"cell_size={cell_size}")
+
     image = Image.new('RGB', opts.canvas_size(), opts.background_rgb())
 
     if opts.has_background_image():
+        opts.log_say(f"Adding background image '{opts.get_bg_file_name()}'")
+
         bg_image = Image.open(opts.get_bg_file_name())
 
-        new_size = get_new_size_zoom(bg_image.size, opts.canvas_size())
-        bg_image = bg_image.resize(new_size)
+        zoom_size = get_new_size_zoom(bg_image.size, opts.canvas_size())
+
+        opts.log_add(f"zoom_size='{zoom_size}")
+
+        bg_image = bg_image.resize(zoom_size)
 
         crop_box = get_crop_box(bg_image.size, opts.canvas_size())
+
+        opts.log_add(f"crop_box='{crop_box}")
+
         bg_image = bg_image.crop(crop_box)
 
         if bg_image.size != opts.canvas_size():
             #  These should match. Warn when they do not.
-            print(
+            opts.log_say(
                 "WARNING: bg_image.size={0} but canvas_size={1}.".format(
                     bg_image.size,
                     opts.canvas_size()
@@ -991,7 +1002,7 @@ def create_image(opts: MontageOptions, image_num: int):
             else:
                 image_name = placement.file_name
 
-            opts.log_say(f"Placing image '{image_name}")
+            opts.log_say(f"Placing image '{image_name}'")
 
             img = Image.open(image_name)
 
@@ -1020,7 +1031,9 @@ def create_image(opts: MontageOptions, image_num: int):
 
     file_name = opts.image_file_name(image_num)
 
-    print(f"\nCreating image '{file_name}'")
+    # print(f"\nCreating image '{file_name}'")
+
+    opts.log_say(f"Saving '{file_name}'")
 
     image.save(file_name)
 

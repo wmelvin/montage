@@ -10,7 +10,7 @@ from pathlib import Path
 
 MAX_SHUFFLE_COUNT = 99
 
-app_version = '20210822.1'
+app_version = '20210824.1'
 
 app_title = f'montage.py - version {app_version}'
 
@@ -62,13 +62,20 @@ class MontageOptions:
         self.border_rgba = None
         self.image_list = []
         self.bg_image_list = []
-        self.placements = []
+        self._placements = []
+        self._messages = []
 
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
 
     def add_placement(self, x, y, w, h, file_name=''):
-        self.placements.append(Placement(x, y, w, h, file_name))
+        self._placements.append(Placement(x, y, w, h, file_name))
+
+    def get_placements_list(self):
+        return self._placements
+
+    def add_message(self, message):
+        self._messages.append(message)
 
     def has_background_image(self):
         return 0 < len(self.bg_image_list)
@@ -140,7 +147,8 @@ class MontageOptions:
             return min(self.shuffle_count, MAX_SHUFFLE_COUNT)
 
     def prepare(self):
-        self.placements.clear()
+        self._placements.clear()
+        self._messages.clear()
         self.set_cols_rows()
         self.shuffle_bg_images()
         self.shuffle_images()
@@ -177,6 +185,60 @@ class MontageOptions:
 
         return str(dir.joinpath(p))
 
+    def get_options_as_str(self):
+        s = ''
+        s += "\n[settings]\n"
+        s += f"output_file={qs(self.output_file_name)}\n"
+        s += f"output_dir={qs(self.output_dir)}\n"
+        s += f"canvas_width={self.canvas_width}\n"
+        s += f"canvas_height={self.canvas_height}\n"
+        s += "background_rgba={0},{1},{2},{3}\n".format(
+            self.bg_rgba[0],
+            self.bg_rgba[1],
+            self.bg_rgba[2],
+            self.bg_rgba[3]
+        )
+        s += f"background_blur={self.bg_blur}\n"
+        s += f"columns={self.init_ncols}\n"
+        s += f"rows={self.init_nrows}\n"
+        s += f"margin={self.margin}\n"
+        s += f"padding={self.padding}\n"
+        s += f"border_width={self.border_width}\n"
+        s += "border_rgba={0},{1},{2},{3}\n".format(
+            self.border_rgba[0],
+            self.border_rgba[1],
+            self.border_rgba[2],
+            self.border_rgba[3]
+        )
+        s += f"shuffle_mode={self.shuffle_mode}\n"
+        s += f"shuffle_count={self.shuffle_count}\n"
+        s += f"stamp_mode={self.stamp_mode}\n"
+        s += f"write_opts={self.write_opts}\n"
+
+        s += "\n[feature-1]\n"
+        s += f"file={qs(self.feature1.file_name)}\n"
+        s += f"column={self.feature1.col}\n"
+        s += f"row={self.feature1.row}\n"
+        s += f"num_columns={self.feature1.ncols}\n"
+        s += f"num_rows={self.feature1.nrows}\n"
+
+        s += "\n[feature-2]\n"
+        s += f"file={qs(self.feature2.file_name)}\n"
+        s += f"column={self.feature2.col}\n"
+        s += f"row={self.feature2.row}\n"
+        s += f"num_columns={self.feature2.ncols}\n"
+        s += f"num_rows={self.feature2.nrows}\n"
+
+        s += "\n[background-images]\n"
+        for i in self.bg_image_list:
+            s += f"{qs(i)}\n"
+
+        s += "\n[images]\n"
+        for i in self.image_list:
+            s += f"{qs(i)}\n"
+
+        return s
+
     def write_options(self, image_file_name):
         if self.write_opts:
             p = Path(image_file_name)
@@ -192,61 +254,11 @@ class MontageOptions:
                     app_title
                 ))
 
-                f.write("\n[settings]\n")
-                f.write(f"output_file={qs(self.output_file_name)}\n")
-                f.write(f"output_dir={qs(self.output_dir)}\n")
+                f.write(self.get_options_as_str())
 
-                f.write(f"canvas_width={self.canvas_width}\n")
-                f.write(f"canvas_height={self.canvas_height}\n")
-
-                f.write("background_rgba={0},{1},{2},{3}\n".format(
-                    self.bg_rgba[0],
-                    self.bg_rgba[1],
-                    self.bg_rgba[2],
-                    self.bg_rgba[3]
-                ))
-                f.write(f"background_blur={self.bg_blur}\n")
-
-                f.write(f"columns={self.init_ncols}\n")
-                f.write(f"rows={self.init_nrows}\n")
-                f.write(f"margin={self.margin}\n")
-                f.write(f"padding={self.padding}\n")
-
-                f.write(f"border_width={self.border_width}\n")
-
-                f.write("border_rgba={0},{1},{2},{3}\n".format(
-                    self.border_rgba[0],
-                    self.border_rgba[1],
-                    self.border_rgba[2],
-                    self.border_rgba[3]
-                ))
-
-                f.write(f"shuffle_mode={self.shuffle_mode}\n")
-                f.write(f"shuffle_count={self.shuffle_count}\n")
-                f.write(f"stamp_mode={self.stamp_mode}\n")
-                f.write(f"write_opts={self.write_opts}\n")
-
-                f.write("\n[feature-1]\n")
-                f.write(f"file={qs(self.feature1.file_name)}\n")
-                f.write(f"column={self.feature1.col}\n")
-                f.write(f"row={self.feature1.row}\n")
-                f.write(f"num_columns={self.feature1.ncols}\n")
-                f.write(f"num_rows={self.feature1.nrows}\n")
-
-                f.write("\n[feature-2]\n")
-                f.write(f"file={qs(self.feature2.file_name)}\n")
-                f.write(f"column={self.feature2.col}\n")
-                f.write(f"row={self.feature2.row}\n")
-                f.write(f"num_columns={self.feature2.ncols}\n")
-                f.write(f"num_rows={self.feature2.nrows}\n")
-
-                f.write("\n[background-images]\n")
-                for i in self.bg_image_list:
-                    f.write(f"{qs(i)}\n")
-
-                f.write("\n[images]\n")
-                for i in self.image_list:
-                    f.write(f"{qs(i)}\n")
+                if 0 < len(self._messages):
+                    f.write("\n[messages]\n")
+                    f.writelines(self._messages)
 
     def check_options(self):
         errors = []
@@ -965,7 +977,7 @@ def create_image(opts: MontageOptions, image_num: int):
                 opts.add_placement(x, y, inner_w, inner_h)
 
     i = 0
-    for placement in opts.placements:
+    for placement in opts.get_placements_list():
         if i < len(opts.image_list):
 
             if len(placement.file_name) == 0:
@@ -974,11 +986,16 @@ def create_image(opts: MontageOptions, image_num: int):
             else:
                 image_name = placement.file_name
 
+            opts.add_message(f"Placing image '{image_name}")
+
             img = Image.open(image_name)
 
             img = ImageOps.exif_transpose(img)
 
             new_size, new_pos = get_size_and_position(img.size, placement)
+
+            opts.add_message(f"  new_size='{new_size}")
+            opts.add_message(f"  new_pos='{new_pos}")
 
             if 0 < opts.border_width:
                 border_image = Image.new('RGB', new_size, opts.border_rgb())

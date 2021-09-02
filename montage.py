@@ -3,6 +3,7 @@
 import argparse
 import random
 import sys
+import textwrap
 from collections import namedtuple
 from datetime import datetime
 from PIL import Image, ImageFilter, ImageOps
@@ -10,7 +11,9 @@ from pathlib import Path
 
 MAX_SHUFFLE_COUNT = 99
 
-app_version = '20210824.1'
+app_version = '210902.1'
+
+pub_version = '1.0.dev1'
 
 app_title = f'montage.py - version {app_version}'
 
@@ -39,7 +42,7 @@ class MontageDefaults:
 
 class MontageOptions:
     def __init__(self):
-        self._dt_stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        self._run_dt = datetime.now()
         self.output_file_name = None
         self.output_dir = None
         self.canvas_width = None
@@ -99,7 +102,7 @@ class MontageOptions:
                 for x in range(v * 2):
                     a.append(v)
         else:
-            a = [x for x in range(0, value + 1)]
+            a = [x for x in range(1, value + 1)]
         random.shuffle(a)
         return a[0]
 
@@ -157,6 +160,13 @@ class MontageOptions:
         self.shuffle_bg_images()
         self.shuffle_images()
 
+    def _timestamp_str(self):
+        if 2 < self.stamp_mode:
+            fmt_str = '%Y%m%d_%H%M%S_%f'
+        else:
+            fmt_str = '%Y%m%d_%H%M%S'
+        return self._run_dt.strftime(fmt_str)
+
     def image_file_name(self, image_num):
         if len(self.output_dir) == 0:
             dir = Path.cwd()
@@ -174,22 +184,22 @@ class MontageOptions:
                 image_num)
             ).with_suffix(p.suffix)
 
-        if self.stamp_mode == 1:
+        if self.stamp_mode in [1, 3]:
             #  Mode 1: date_time stamp at left of file name.
             p = Path('{0}_{1}'.format(
-                self._dt_stamp,
+                self._timestamp_str(),
                 p.with_suffix(''))
             ).with_suffix(p.suffix)
-        elif self.stamp_mode == 2:
+        elif self.stamp_mode in [2, 4]:
             #  Mode 2: date_time stamp at right of file name.
             p = Path('{0}_{1}'.format(
                 p.with_suffix(''),
-                self._dt_stamp)
+                self._timestamp_str())
             ).with_suffix(p.suffix)
 
         return str(dir.joinpath(p))
 
-    def get_options_as_str(self):
+    def _options_as_str(self):
         s = ''
         s += "\n[settings]\n"
         s += f"output_file={qs(self.output_file_name)}\n"
@@ -258,7 +268,7 @@ class MontageOptions:
                     app_title
                 ))
 
-                f.write(self.get_options_as_str())
+                f.write(self._options_as_str())
 
                 if 0 < len(self._log):
                     f.write("\n\n[LOG]\n")
@@ -527,6 +537,7 @@ def warn_old_settings(settings):
 
 def get_arguments():
     ap = argparse.ArgumentParser(
+        formatter_class=argparse.RawTextHelpFormatter,
         description='Create an image montage given a list of image files.'
     )
 
@@ -662,9 +673,17 @@ def get_arguments():
         dest='shuffle_mode',
         type=str,
         action='store',
-        help='Flags that control shuffling (random order): i (images), '
-        + 'b (background image), c (columns), r (rows), wc (weighted '
-        + 'columns), wr (weighted rows). Example: --shuffle-mode=ibwc'
+        help=textwrap.dedent('''\
+            Flags that control shuffling (random order):
+                i = images
+                b = background image
+                c = columns
+                r = rows
+                wc = weighted columns
+                wr = weighted rows
+                (weighted favors larger numbers)
+            Example: --shuffle-mode=ibwc
+        ''')
     )
 
     ap.add_argument(
@@ -680,8 +699,14 @@ def get_arguments():
         dest='stamp_mode',
         type=int,
         action='store',
-        help='Mode for adding a date_time stamp to the output file name: '
-        + '0 = none, 1 = at left of file name, 2 = at right of file name.'
+        help=textwrap.dedent('''\
+            Mode for adding a date_time stamp to the output file name:
+                0 = none
+                1 = at left of file name
+                2 = at right of file name
+                3 = at left of file name, include microseconds
+                4 = at right of file name, include microseconds
+            ''')
     )
 
     ap.add_argument(
@@ -914,15 +939,15 @@ def get_crop_box(current_size, target_size):
     trg_w, trg_h = target_size
 
     if trg_w < cur_w:
-        x1 = int((cur_w - trg_w) // 2)
-        x2 = cur_w - (x1 + 1)
+        x1, xm = divmod(cur_w - trg_w, 2)
+        x2 = cur_w - (x1 + xm)
     else:
         x1 = 0
         x2 = trg_w
 
     if trg_h < cur_h:
-        y1 = int((cur_h - trg_h) // 2)
-        y2 = cur_h - (y1 + 1)
+        y1, ym = divmod(cur_h - trg_h, 2)
+        y2 = cur_h - (y1 + ym)
     else:
         y1 = 0
         y2 = trg_h
@@ -952,11 +977,15 @@ def create_image(opts: MontageOptions, image_num: int):
 
         bg_image = Image.open(opts.get_bg_file_name())
 
+        opts.log_add(f"(original) bg_image.size='{bg_image.size}")
+
         zoom_size = get_new_size_zoom(bg_image.size, opts.canvas_size())
 
         opts.log_add(f"zoom_size='{zoom_size}")
 
         bg_image = bg_image.resize(zoom_size)
+
+        opts.log_add(f"(resized) bg_image.size='{bg_image.size}")
 
         crop_box = get_crop_box(bg_image.size, opts.canvas_size())
 

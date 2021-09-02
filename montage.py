@@ -63,7 +63,9 @@ class MontageOptions:
         self.write_opts = None
         self.border_width = None
         self.border_rgba = None
-        self.image_list = []
+        self.image_list_a = []
+        self.image_list_b = []
+        self.images_list = []
         self.bg_image_list = []
         self._placements = []
         self._log = []
@@ -130,8 +132,15 @@ class MontageOptions:
         return 'i' in self.shuffle_mode
 
     def shuffle_images(self):
+        self.images_list = [] + self.image_list_a
         if self.do_shuffle_images():
-            random.shuffle(self.image_list)
+            if 0 < len(self.image_list_b):
+                temp_list = [] + self.image_list_b
+                random.shuffle(temp_list)
+                self.images_list.append(temp_list[0])
+            random.shuffle(self.images_list)
+        else:
+            self.images_list += self.image_list_b        
 
     def do_shuffle_bg_images(self):
         return 'b' in self.shuffle_mode
@@ -248,7 +257,11 @@ class MontageOptions:
             s += f"{qs(i)}\n"
 
         s += "\n[images]\n"
-        for i in self.image_list:
+        for i in self.image_list_a:
+            s += f"{qs(i)}\n"
+
+        s += "\n[images-1]\n"
+        for i in self.image_list_b:
             s += f"{qs(i)}\n"
 
         return s
@@ -270,8 +283,12 @@ class MontageOptions:
 
                 f.write(self._options_as_str())
 
+                f.write("\n\n[LOG: IMAGES-LIST]\n")
+                for i in self.images_list:
+                    f.write(f"{qs(i)}\n")
+
                 if 0 < len(self._log):
-                    f.write("\n\n[LOG]\n")
+                    f.write("\n\n[LOG: STEPS]\n")
                     for i in self._log:
                         f.write(f"{i}\n")
 
@@ -289,7 +306,13 @@ class MontageOptions:
                     f"Output folder not a directory: '{self.output_dir}'."
                 )
 
-        for file_name in self.image_list:
+        for file_name in self.image_list_a:
+            if not Path(file_name).exists():
+                errors.append(
+                    f"Image file not found: '{file_name}'."
+                )
+
+        for file_name in self.image_list_b:
             if not Path(file_name).exists():
                 errors.append(
                     f"Image file not found: '{file_name}'."
@@ -361,9 +384,15 @@ class MontageOptions:
                 get_option_entries('[feature-2]', file_text), True
             )
 
-            self.image_list += [
+            self.image_list_a += [
                 i.strip("'\"") for i in get_option_entries(
                     '[images]', file_text
+                )
+            ]
+
+            self.image_list_b += [
+                i.strip("'\"") for i in get_option_entries(
+                    '[images-1]', file_text
                 )
             ]
 
@@ -511,7 +540,7 @@ class MontageOptions:
             if args.feature_2 is not None:
                 self.feature2 = get_feature_args(args.feature_2)
 
-            self.image_list = [i for i in args.images] + self.image_list
+            self.image_list_a = [i for i in args.images] + self.image_list_a
 
         self._set_defaults(defaults)
 
@@ -1023,10 +1052,10 @@ def create_image(opts: MontageOptions, image_num: int):
 
     i = 0
     for placement in opts.get_placements_list():
-        if i < len(opts.image_list):
+        if i < len(opts.images_list):
 
             if len(placement.file_name) == 0:
-                image_name = opts.image_list[i]
+                image_name = opts.images_list[i]
                 i += 1
             else:
                 image_name = placement.file_name

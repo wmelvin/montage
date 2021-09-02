@@ -11,7 +11,7 @@ from pathlib import Path
 
 MAX_SHUFFLE_COUNT = 99
 
-app_version = '210902.1'
+app_version = '210902.2'
 
 pub_version = '1.0.dev1'
 
@@ -132,15 +132,18 @@ class MontageOptions:
         return 'i' in self.shuffle_mode
 
     def shuffle_images(self):
+        n_images = self.cols * self.rows
         self.images_list = [] + self.image_list_a
         if self.do_shuffle_images():
             if 0 < len(self.image_list_b):
+                self.images_list = self.images_list[:n_images - 1]
                 temp_list = [] + self.image_list_b
                 random.shuffle(temp_list)
                 self.images_list.append(temp_list[0])
             random.shuffle(self.images_list)
         else:
-            self.images_list += self.image_list_b        
+            self.images_list += self.image_list_b
+            self.images_list = self.images_list[:n_images]
 
     def do_shuffle_bg_images(self):
         return 'b' in self.shuffle_mode

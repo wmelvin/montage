@@ -11,7 +11,7 @@ from pathlib import Path
 
 MAX_SHUFFLE_COUNT = 99
 
-app_version = '210902.2'
+app_version = '210909.1'
 
 pub_version = '1.0.dev1'
 
@@ -337,7 +337,8 @@ class MontageOptions:
         if file_name is not None:
             p = Path(file_name).expanduser().resolve()
             if not p.exists():
-                sys.stderr.write(f"ERROR: File not found: {file_name}")
+                # sys.stderr.write(f"ERROR: File not found: {file_name}")
+                sys.stderr.write(f"ERROR: File not found: {p}")
                 sys.exit(1)
 
             with open(p, 'r') as f:
@@ -545,7 +546,44 @@ class MontageOptions:
 
             self.image_list_a = [i for i in args.images] + self.image_list_a
 
+        self.image_list_a = expand_image_list(self.image_list_a)
+
+        self.image_list_b = expand_image_list(self.image_list_b)
+
+        self.bg_image_list = expand_image_list(self.bg_image_list)
+
         self._set_defaults(defaults)
+
+
+def get_list_from_file(file_name):
+    p = Path(file_name).expanduser().resolve()
+    if not p.exists():
+        # sys.stderr.write(f"ERROR: File not found: {file_name}")
+        sys.stderr.write(f"ERROR: File not found: {p}")
+        sys.exit(1)
+
+    result = []
+
+    with open(p, 'r') as f:
+        file_text = f.readlines()
+
+    for line in file_text:
+        s = line.strip()
+        if (0 < len(s)) and not s.startswith('#'):
+            result.append(s)
+
+    return result
+
+
+def expand_image_list(raw_list):
+    new_list = []
+    if (raw_list is not None) and (0 < len(raw_list)):
+        for item in raw_list:
+            if item.startswith('@'):
+                new_list += get_list_from_file(item[1:])
+            else:
+                new_list.append(item)
+    return new_list
 
 
 def warn_old_settings(settings):

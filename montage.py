@@ -63,6 +63,7 @@ class MontageOptions:
         self.write_opts = None
         self.border_width = None
         self.border_rgba = None
+        self.do_zoom = None
         self.image_list_a = []
         self.image_list_b = []
         self.images_list = []
@@ -236,6 +237,7 @@ class MontageOptions:
             self.border_rgba[2],
             self.border_rgba[3]
         )
+        s += f"do_zoom={self.do_zoom}\n"
         s += f"shuffle_mode={self.shuffle_mode}\n"
         s += f"shuffle_count={self.shuffle_count}\n"
         s += f"stamp_mode={self.stamp_mode}\n"
@@ -380,6 +382,8 @@ class MontageOptions:
 
             self.write_opts = get_opt_bool(None, 'write_opts', settings)
 
+            self.do_zoom = get_opt_bool(None, 'do_zoom', settings)
+
             self.feature1 = get_opt_feat(
                 get_option_entries('[feature-1]', file_text), True
             )
@@ -465,6 +469,9 @@ class MontageOptions:
         if self.write_opts is None:
             self.write_opts = False
 
+        if self.do_zoom is None:
+            self.do_zoom = False
+
         if self.feature1 is None:
             self.feature1 = get_opt_feat('', False)
 
@@ -537,6 +544,10 @@ class MontageOptions:
             if args.write_opts is not None:
                 if args.write_opts:
                     self.write_opts = True
+
+            if args.do_zoom is not None:
+                if args.do_zoom:
+                    self.do_zoom = True
 
             if args.feature_1 is not None:
                 self.feature1 = get_feature_args(args.feature_1)
@@ -793,6 +804,13 @@ def get_arguments():
         help='Write the option settings to a file.'
     )
 
+    ap.add_argument(
+        '-z', '--zoom',
+        dest='do_zoom',
+        action='store_true',
+        help='Zoom images to fill instead of fitting to frame.'
+    )
+
     # TODO: Add details to help messages.
 
     return ap.parse_args()
@@ -899,16 +917,30 @@ def qs(s: str) -> str:
         return s
 
 
-def get_size_and_position(img_size, initial_placement: Placement, border=0):
+def get_size_and_position(
+    img_size,
+    initial_placement: Placement,
+    border,
+    zoom
+):
     w = initial_placement.width
     h = initial_placement.height
     img_w = img_size[0]
     img_h = img_size[1]
     scale_w = (w - (border * 2)) / img_w
     scale_h = (h - (border * 2)) / img_h
-    scale_factor = min(scale_w, scale_h)
+    # scale_w = w / (img_w + (border * 2))
+    # scale_h = h / (img_h + (border * 2))
+
+    if zoom:
+        scale_factor = max(scale_w, scale_h)
+    else:
+        scale_factor = min(scale_w, scale_h)
+
     size_width = int(img_w * scale_factor)
     size_height = int(img_h * scale_factor)
+    # size_width = int((img_w * scale_factor) + (border * scale_factor))
+    # size_height = int((img_h * scale_factor) + (border * scale_factor))
 
     if size_width < w:
         add_x = int((w - size_width) / 2)
@@ -920,11 +952,16 @@ def get_size_and_position(img_size, initial_placement: Placement, border=0):
     else:
         add_y = 0
 
+    if zoom:
+        crop_box = get_crop_box(img_size, (size_width, size_height))
+    else:
+        crop_box = None
+
     new_position = (
         initial_placement.left + add_x,
         initial_placement.top + add_y
     )
-    return ((size_width, size_height), new_position)
+    return ((size_width, size_height), new_position, crop_box)
 
 
 def get_rgba(default, arg_str):
@@ -1107,30 +1144,49 @@ def create_image(opts: MontageOptions, image_num: int):
 
             img = ImageOps.exif_transpose(img)
 
-            new_size, new_pos = get_size_and_position(img.size, placement)
+            new_size, new_pos, crop_box = get_size_and_position(
+                img.size,
+                placement,
+                0,
+                opts.do_zoom
+            )
 
             opts.log_add(f"new_size='{new_size}")
             opts.log_add(f"new_pos='{new_pos}")
 
             if 0 < opts.border_width:
                 border_image = Image.new('RGB', new_size, opts.border_rgb())
+
+                if crop_box is not None:
+                    # opts.log_add(f"crop_box='{crop_box}")
+                    border_image = border_image.crop(crop_box)
+
                 border_mask = Image.new(
                     'RGBA',
                     border_image.size,
                     opts.border_mask_rgba()
                 )
+
                 image.paste(border_image, new_pos, mask=border_mask)
-                new_size, new_pos = get_size_and_position(
-                    img.size, placement, opts.border_width
+
+                new_size, new_pos, crop_box = get_size_and_position(
+                    img.size,
+                    placement,
+                    opts.border_width,
+                    opts.do_zoom
                 )
+
+            opts.log_add(f"(after border) new_size='{new_size}")
 
             img = img.resize(new_size)
 
-            image.paste(img, new_pos)
+            if crop_box is not None:
+                opts.log_add(f"crop_box='{crop_box}")
+                img = img.crop(crop_box)
+
+            # image.paste(img, new_pos)
 
     file_name = opts.image_file_name(image_num)
-
-    # print(f"\nCreating image '{file_name}'")
 
     opts.log_say(f"Saving '{file_name}'")
 

@@ -6,6 +6,7 @@ import sys
 import textwrap
 from collections import namedtuple
 from datetime import datetime
+from typing import List
 from PIL import Image, ImageFilter, ImageOps
 from pathlib import Path
 
@@ -22,7 +23,26 @@ FeatureImage = namedtuple(
     'FeatureImage', 'col, ncols, row, nrows, file_name'
 )
 
-Placement = namedtuple('Placement', 'left, top, width, height, file_name')
+
+class Placement:
+    def __init__(self, left, top, width, height, file_name):
+        self.x = left
+        self.y = top
+        self.width = width
+        self.height = height
+        self.file_name = file_name
+
+    # def x(self):
+    #     return self.left
+
+    # def y(self):
+    #     return self.top
+
+    # def size(self):
+    #     return (self.width, self.height)
+
+    # def xy(self):
+    #     return (self.left, self.top)
 
 
 class MontageDefaults:
@@ -77,7 +97,7 @@ class MontageOptions:
     def add_placement(self, x, y, w, h, file_name=''):
         self._placements.append(Placement(x, y, w, h, file_name))
 
-    def get_placements_list(self):
+    def get_placements_list(self) -> List[Placement]:
         return self._placements
 
     def has_background_image(self):
@@ -917,53 +937,6 @@ def qs(s: str) -> str:
         return s
 
 
-def get_size_and_position(
-    img_size,
-    initial_placement: Placement,
-    border,
-    zoom
-):
-    w = initial_placement.width
-    h = initial_placement.height
-    img_w = img_size[0]
-    img_h = img_size[1]
-    scale_w = (w - (border * 2)) / img_w
-    scale_h = (h - (border * 2)) / img_h
-    # scale_w = w / (img_w + (border * 2))
-    # scale_h = h / (img_h + (border * 2))
-
-    if zoom:
-        scale_factor = max(scale_w, scale_h)
-    else:
-        scale_factor = min(scale_w, scale_h)
-
-    size_width = int(img_w * scale_factor)
-    size_height = int(img_h * scale_factor)
-    # size_width = int((img_w * scale_factor) + (border * scale_factor))
-    # size_height = int((img_h * scale_factor) + (border * scale_factor))
-
-    if size_width < w:
-        add_x = int((w - size_width) / 2)
-    else:
-        add_x = 0
-
-    if size_height < h:
-        add_y = int((h - size_height) / 2)
-    else:
-        add_y = 0
-
-    if zoom:
-        crop_box = get_crop_box(img_size, (size_width, size_height))
-    else:
-        crop_box = None
-
-    new_position = (
-        initial_placement.left + add_x,
-        initial_placement.top + add_y
-    )
-    return ((size_width, size_height), new_position, crop_box)
-
-
 def get_rgba(default, arg_str):
     if arg_str is None:
         return default
@@ -1146,14 +1119,14 @@ def create_image(opts: MontageOptions, image_num: int):
                 #  Placement is padded left, top, width, height.
 
     i = 0
-    for placement in opts.get_placements_list():
+    for place in opts.get_placements_list():
         if i < len(opts.images_list):
 
-            if len(placement.file_name) == 0:
+            if len(place.file_name) == 0:
                 image_name = opts.images_list[i]
                 i += 1
             else:
-                image_name = placement.file_name
+                image_name = place.file_name
 
             opts.log_say(f"Placing image '{image_name}'")
 
@@ -1161,54 +1134,45 @@ def create_image(opts: MontageOptions, image_num: int):
 
             img = ImageOps.exif_transpose(img)
 
-            # --- BEGIN try new method
+            scale_w = (place.width / img.width)
+            scale_h = (place.height / img.height)
 
-            place_w = placement.width
-            place_h = placement.height
-            place_x = placement.left
-            place_y = placement.top
-
-            scale_w = (place_w / img.width)
-            scale_h = (place_h / img.height)
-
+            precrop_w = None
+            precrop_h = None
             crop_box = None
 
             if opts.do_zoom:
                 scale_by = max(scale_w, scale_h)
-                resize_w = int(img.width * scale_by)
-                resize_h = int(img.height * scale_by)
-                new_w = place_w
-                new_h = place_h
-                new_x = place_x
-                new_y = place_y
+                precrop_w = int(img.width * scale_by)
+                precrop_h = int(img.height * scale_by)
+                new_w = place.width
+                new_h = place.height
+                new_x = place.x
+                new_y = place.y
                 if 0 < opts.border_width:
-                    border_size = (place_w, place_h)
-                    border_xy = (place_x, place_y)
+                    border_size = (place.width, place.height)
+                    border_xy = (place.x, place.y)
                     new_w = new_w - (opts.border_width * 2)
                     new_h = new_h - (opts.border_width * 2)
                     new_x = new_x + opts.border_width
                     new_y = new_y + opts.border_width
 
-                crop_box = get_crop_box((resize_w, resize_h), (new_w, new_h))
+                crop_box = get_crop_box((precrop_w, precrop_h), (new_w, new_h))
 
             else:
                 scale_by = min(scale_w, scale_h)
                 new_w = int(img.width * scale_by)
                 new_h = int(img.height * scale_by)
 
-                if new_w < place_w:
-                    shift_x = int((place_w - new_w) / 2)
+                if new_w < place.width:
+                    new_x = place.x + int((place.width - new_w) / 2)
                 else:
-                    shift_x = 0
+                    new_x = place.x
 
-                if new_h < place_h:
-                    shift_y = int((place_h - new_h) / 2)
+                if new_h < place.height:
+                    new_y = place.y + int((place.height - new_h) / 2)
                 else:
-                    shift_y = 0
-
-                new_x = place_x + shift_x
-                new_y = place_y + shift_y
-                # new_xy = (new_x, new_y)
+                    new_y = place.y
 
                 if 0 < opts.border_width:
                     border_size = (new_w, new_h)
@@ -1227,7 +1191,7 @@ def create_image(opts: MontageOptions, image_num: int):
             if crop_box is None:
                 img = img.resize(new_size)
             else:
-                img = img.resize((resize_w, resize_h))
+                img = img.resize((precrop_w, precrop_h))
                 img = img.crop(crop_box)
 
             image.paste(img, new_xy)

@@ -12,14 +12,15 @@ app_title = f"montool-find-missing.py (version {app_version})"
 
 class ImageListItem:
     def __init__(self, list_name, original_path):
-        self.list_name = list_name
-        self.original_path = original_path
+        self.list_name: str = list_name
+        self.original_path: str = original_path
         p = Path(original_path).expanduser().resolve()
-        self.path_expanded = str(p)
-        self.orig_parent = str(p.parent)
-        self.original_exists = p.exists()
-        self.tried_to_find = False
-        self.new_path = ""
+        self.path_expanded: str = str(p)
+        self.orig_parent: str = str(p.parent)
+        self.file_name: str = p.name
+        self.original_exists: bool = p.exists()
+        self.tried_to_find: bool = False
+        self.new_path: str = ""
 
     def __str__(self):
         return f"ImageListItem('{self.list_name}', '{self.original_path}')"
@@ -29,6 +30,7 @@ class ImageListItem:
         s += f"  {self.original_path=}\n"
         s += f"  {self.path_expanded=}\n"
         s += f"  {self.orig_parent=}\n"
+        s += f"  {self.file_name=}\n"
         s += f"  {self.original_exists=}\n"
         s += f"  {self.tried_to_find=}\n"
         s += f"  {self.new_path=}\n"
@@ -43,32 +45,36 @@ class ImageList:
 
         self.items = []
 
-    def get_same_path(self, list_item):
+    def get_same_path(self, list_item: ImageListItem):
         for i in self.items:
             if i.tried_to_find and (0 < len(i.new_path)):
                 if i.orig_parent == list_item.orig_parent:
                     return str(Path(i.new_path).parent)
         return ""
 
-    def find_file(self, list_item: ImageListItem):
-        list_item.tried_to_find = True
-
-        file_path = Path(list_item.original_path)
-        fn = file_path.name
-        globpat = f"**/{fn}"
-
+    def find_per_same_parent(self, list_item: ImageListItem):
         #  If another item that has the same parent has already been
         #  found, then look in that item's new location first.
+        globpat = f"**/{list_item.file_name}"
         same_parent_path = self.get_same_path(list_item)
         if 0 < len(same_parent_path):
             fnd = list(Path(same_parent_path).glob(globpat))
             if 0 < len(fnd):
                 assert len(fnd) == 1
                 list_item.new_path = str(fnd[0])
-                return
+                return True
+        return False
 
-        #  Next, look for the file by walking up the original parent path.
-        par = file_path.parent
+    def find_file(self, list_item: ImageListItem):
+        list_item.tried_to_find = True
+
+        if self.find_per_same_parent(list_item):
+            return
+
+        globpat = f"**/{list_item.file_name}"
+
+        #  Look for the file by walking up the original parent path.
+        par = Path(list_item.orig_parent)
         found = False
         while not found:
             parent_path = str(par)

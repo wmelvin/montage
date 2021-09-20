@@ -82,15 +82,22 @@ class ImageList:
         if 0 < len(same_parent_path):
             log.Say("Found another item with the same parent path.")
             log.Say(f"Searching {same_parent_path}")
-            fnd = list(Path(same_parent_path).glob(globpat))
-            if 0 < len(fnd):
-                assert len(fnd) == 1
-                list_item.new_path = str(fnd[0])
+            found = list(Path(same_parent_path).glob(globpat))
+            if 0 < len(found):
+                if 1 < len(found):
+                    log.Say("Found more than one match. Using first one.")
+                    for x in found:
+                        log.Add(f"  '{x}'")
+                list_item.new_path = str(found[0])
+                log.Say(f"Found '{list_item.new_path}'")
                 return True
         return False
 
     def find_file(self, list_item: ImageListItem):
         list_item.tried_to_find = True
+
+        log.Say(f"MISSING: {list_item.file_name}")
+        log.Say(f"Original location: {list_item.orig_parent}")
 
         #  If another item with the same parent path has already been found,
         #  then look in that item's new location first.
@@ -114,7 +121,7 @@ class ImageList:
                 list_item.new_path = str(found[0])
                 log.Say(f"Found '{list_item.new_path}'")
                 return
-
+        log.Say("Not found :(")
 
     def find_files(self):
         for item in self.items:
@@ -134,6 +141,28 @@ class ImageList:
             for i in self.items:
                 f.write(f"{i}\n")
                 f.write(f"{i.as_str()}\n")
+
+    def get_section(self, tag: str) -> List[str]:
+        s = f"\n[{tag}]\n"
+        for item in self.items:
+            if item.list_name == tag:
+                if item.original_exists:
+                    s += f"{item.original_path}\n"
+                elif 0 < len(item.new_path):
+                    s += f"# OLD: {item.original_path}\n"
+                    s += f"{item.new_path}\n"
+                else:
+                    s += f"# NOT FOUND: {item.original_path}\n"
+                s += "\n"
+        return s
+
+    def write_output_txt(self):
+        file_name = "output-find-missing.txt"
+        log.Say(f"Saving '{file_name}'")
+        with open(file_name, "w") as f:
+            f.write(self.get_section("background-images"))
+            f.write(self.get_section("images"))
+            f.write(self.get_section("images-1"))
 
 
 def get_args():
@@ -218,6 +247,8 @@ def main():
     image_list.find_files()
 
     image_list.write_debug_txt("after")
+
+    image_list.write_output_txt()
 
     log.write_out()
 

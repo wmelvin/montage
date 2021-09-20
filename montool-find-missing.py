@@ -16,9 +16,10 @@ class ImageListItem:
         self.original_path = original_path
         p = Path(original_path).expanduser().resolve()
         self.path_expanded = str(p)
+        self.orig_parent = str(p.parent)
         self.original_exists = p.exists()
         self.tried_to_find = False
-        self.new_path = None
+        self.new_path = ""
 
     def __str__(self):
         return f"ImageListItem('{self.list_name}', '{self.original_path}')"
@@ -27,6 +28,7 @@ class ImageListItem:
         s = f"  {self.list_name=}\n"
         s += f"  {self.original_path=}\n"
         s += f"  {self.path_expanded=}\n"
+        s += f"  {self.orig_parent=}\n"
         s += f"  {self.original_exists=}\n"
         s += f"  {self.tried_to_find=}\n"
         s += f"  {self.new_path=}\n"
@@ -34,6 +36,59 @@ class ImageListItem:
 
     def do_find(self):
         return not (self.original_exists or self.tried_to_find)
+
+
+class ImageList:
+    def __init__(self):
+
+        self.items = []
+
+    def get_same_path(self, list_item):
+        for i in self.items:
+            if i.tried_to_find and (0 < len(i.new_path)):
+                if i.orig_parent == list_item.orig_parent:
+                    return str(Path(i.new_path).parent)
+        return ""
+
+    def find_file(self, list_item: ImageListItem):
+        list_item.tried_to_find = True
+
+        file_path = Path(list_item.original_path)
+        fn = file_path.name
+        globpat = f"**/{fn}"
+
+        #  If another item that has the same parent has already been
+        #  found, then look in that item's new location first.
+        same_parent_path = self.get_same_path(list_item)
+        if 0 < len(same_parent_path):
+            fnd = list(Path(same_parent_path).glob(globpat))
+            if 0 < len(fnd):
+                assert len(fnd) == 1
+                list_item.new_path = str(fnd[0])
+                return
+
+        #  Next, look for the file by walking up the original parent path.
+        par = file_path.parent
+        found = False
+        while not found:
+            parent_path = str(par)
+            print(f"Searching {parent_path}")
+            fnd = list(par.glob(globpat))
+            if 0 < len(fnd):
+                found = True
+                assert len(fnd) == 1
+                list_item.new_path = str(fnd[0])
+                return
+            else:
+                par = par.parent
+                if str(par) == parent_path:
+                    return
+        return
+
+    def find_files(self):
+        for item in self.items:
+            if item.do_find():
+                self.find_file(item)
 
 
 def get_args():
@@ -74,24 +129,24 @@ def get_option_entries(opt_section, opt_content):
     return result
 
 
-def try_to_find(file_path: Path) -> str:
-    fn = file_path.name
-    s = f"**/{fn}"
-    par = file_path.parent
-    found = False
-    while not found:
-        parent_path = str(par)
-        print(f"Searching {parent_path}")
-        fnd = list(par.glob(s))
-        if 0 < len(fnd):
-            found = True
-            assert len(fnd) == 1
-            return str(fnd[0])
-        else:
-            par = par.parent
-            if str(par) == parent_path:
-                return ""
-    return ""
+# def try_to_find(file_path: Path) -> str:
+#     fn = file_path.name
+#     s = f"**/{fn}"
+#     par = file_path.parent
+#     found = False
+#     while not found:
+#         parent_path = str(par)
+#         print(f"Searching {parent_path}")
+#         fnd = list(par.glob(s))
+#         if 0 < len(fnd):
+#             found = True
+#             assert len(fnd) == 1
+#             return str(fnd[0])
+#         else:
+#             par = par.parent
+#             if str(par) == parent_path:
+#                 return ""
+#     return ""
 
 
 def main():
@@ -116,24 +171,30 @@ def main():
     with open(opt_path, "r") as f:
         file_text = f.readlines()
 
-    list_items = []
+    image_list = ImageList()
 
-    list_items += [
+    image_list.items += [
         ImageListItem("background-images", x)
         for x in get_option_entries("[background-images]", file_text)
     ]
 
-    list_items += [
+    image_list.items += [
         ImageListItem("images", x)
         for x in get_option_entries("[images]", file_text)
     ]
 
-    list_items += [
+    image_list.items += [
         ImageListItem("images-1", x)
         for x in get_option_entries("[images-1]", file_text)
     ]
 
-    for i in list_items:
+    # for i in image_list.items:
+    #     print(i)
+    #     print(f"{i.as_str()}\n")
+
+    image_list.find_files()
+
+    for i in image_list.items:
         print(i)
         print(f"{i.as_str()}\n")
 

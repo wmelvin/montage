@@ -2,12 +2,36 @@
 
 import argparse
 import sys
+
+# from datetime import datetime
 from pathlib import Path
+from typing import List
 
 
 app_version = "210920.1"
 
 app_title = f"montool-find-missing.py (version {app_version})"
+
+
+class Lawg:
+    def __init__(self, file_name: str):
+        self.file_name = file_name
+        self.entries: List[str] = []
+
+    def Add(self, text: str):
+        self.entries.append(text)
+
+    def Say(self, text: str):
+        print(text)
+        self.Add(text)
+
+    def write_out(self):
+        with open(self.file_name, "w") as f:
+            for entry in self.entries:
+                f.write(f"{entry}\n")
+
+
+log = Lawg("log-montool-find-missing.txt")
 
 
 class ImageListItem:
@@ -43,7 +67,7 @@ class ImageListItem:
 class ImageList:
     def __init__(self):
 
-        self.items = []
+        self.items: List[ImageListItem] = []
 
     def get_same_path(self, list_item: ImageListItem):
         for i in self.items:
@@ -53,11 +77,11 @@ class ImageList:
         return ""
 
     def find_per_same_parent(self, list_item: ImageListItem):
-        #  If another item that has the same parent has already been
-        #  found, then look in that item's new location first.
         globpat = f"**/{list_item.file_name}"
         same_parent_path = self.get_same_path(list_item)
         if 0 < len(same_parent_path):
+            log.Say("Found another item with the same parent path.")
+            log.Say(f"Searching {same_parent_path}")
             fnd = list(Path(same_parent_path).glob(globpat))
             if 0 < len(fnd):
                 assert len(fnd) == 1
@@ -68,33 +92,48 @@ class ImageList:
     def find_file(self, list_item: ImageListItem):
         list_item.tried_to_find = True
 
+        #  If another item with the same parent path has already been found,
+        #  then look in that item's new location first.
         if self.find_per_same_parent(list_item):
             return
 
+        #  Look for the file by walking up the original parent path.
         globpat = f"**/{list_item.file_name}"
 
-        #  Look for the file by walking up the original parent path.
-        par = Path(list_item.orig_parent)
-        found = False
-        while not found:
-            parent_path = str(par)
-            print(f"Searching {parent_path}")
-            fnd = list(par.glob(globpat))
-            if 0 < len(fnd):
-                found = True
-                assert len(fnd) == 1
-                list_item.new_path = str(fnd[0])
+        parents = list(Path(list_item.orig_parent).parents)
+
+        #  Stop before top-level directory under root.
+        for p in parents[:-2]:
+            log.Say(f"Searching {p}")
+            found = list(p.glob(globpat))
+            if 0 < len(found):
+                if 1 < len(found):
+                    log.Say("Found more than one match. Using first one.")
+                    for x in found:
+                        log.Add(f"  '{x}'")
+                list_item.new_path = str(found[0])
+                log.Say(f"Found '{list_item.new_path}'")
                 return
-            else:
-                par = par.parent
-                if str(par) == parent_path:
-                    return
-        return
+
 
     def find_files(self):
         for item in self.items:
             if item.do_find():
                 self.find_file(item)
+
+    def write_debug_txt(self, suffix):
+
+        # file_name = "output-find-missing-debug_{0}_{1}.txt".format(
+        #     datetime.now().strftime('%Y%m%d_%H%M%S'),
+        #     suffix
+        # )
+
+        file_name = f"output-find-missing-debug_{suffix}.txt"
+
+        with open(file_name, "w") as f:
+            for i in self.items:
+                f.write(f"{i}\n")
+                f.write(f"{i.as_str()}\n")
 
 
 def get_args():
@@ -135,28 +174,8 @@ def get_option_entries(opt_section, opt_content):
     return result
 
 
-# def try_to_find(file_path: Path) -> str:
-#     fn = file_path.name
-#     s = f"**/{fn}"
-#     par = file_path.parent
-#     found = False
-#     while not found:
-#         parent_path = str(par)
-#         print(f"Searching {parent_path}")
-#         fnd = list(par.glob(s))
-#         if 0 < len(fnd):
-#             found = True
-#             assert len(fnd) == 1
-#             return str(fnd[0])
-#         else:
-#             par = par.parent
-#             if str(par) == parent_path:
-#                 return ""
-#     return ""
-
-
 def main():
-    print(f"\n{app_title}\n")
+    log.Say(f"\n{app_title}\n")
 
     args = get_args()
 
@@ -172,7 +191,7 @@ def main():
             )
             sys.exit(1)
 
-    print(f"Reading {args.opt_file}.")
+    log.Say(f"Reading {args.opt_file}.")
 
     with open(opt_path, "r") as f:
         file_text = f.readlines()
@@ -194,37 +213,13 @@ def main():
         for x in get_option_entries("[images-1]", file_text)
     ]
 
-    # for i in image_list.items:
-    #     print(i)
-    #     print(f"{i.as_str()}\n")
+    image_list.write_debug_txt("before")
 
     image_list.find_files()
 
-    for i in image_list.items:
-        print(i)
-        print(f"{i.as_str()}\n")
+    image_list.write_debug_txt("after")
 
-    # out_list = []
-
-    # out_list.append("[images]")
-
-    # for fn in opt_img_f:
-    #     out_list.append("")
-    #     p = Path(fn).resolve()
-    #     if p.exists():
-    #         out_list.append(str(p))
-    #     else:
-    #         out_list.append(f"# {fn}")
-    #         print(f"Not found: {p}")
-    #         ph = try_to_find(p)
-    #         if 0 < len(ph):
-    #             out_list.append(ph)
-    #         else:
-    #             out_list.append("NOT FOUND")
-
-    # with open("output-find-missing.txt", "w") as f:
-    #     for item in out_list:
-    #         f.write(f"{item}\n")
+    log.write_out()
 
 
 if __name__ == "__main__":

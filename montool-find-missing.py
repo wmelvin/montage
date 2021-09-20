@@ -72,16 +72,16 @@ class ImageList:
         self.log = log
         self.items: List[ImageListItem] = []
 
-    def get_same_path(self, list_item: ImageListItem):
+    def _get_same_path(self, list_item: ImageListItem):
         for i in self.items:
             if i.tried_to_find and (0 < len(i.new_path)):
                 if i.orig_parent == list_item.orig_parent:
                     return str(Path(i.new_path).parent)
         return ""
 
-    def find_per_same_parent(self, list_item: ImageListItem):
+    def _find_per_same_parent(self, list_item: ImageListItem):
         globpat = f"**/{list_item.file_name}"
-        same_parent_path = self.get_same_path(list_item)
+        same_parent_path = self._get_same_path(list_item)
         if 0 < len(same_parent_path):
             self.log.say("Found another item with the same parent path.")
             self.log.say(f"Searching {same_parent_path}")
@@ -96,7 +96,7 @@ class ImageList:
                 return True
         return False
 
-    def find_file(self, list_item: ImageListItem):
+    def _find_file(self, search_dir: str, list_item: ImageListItem):
         list_item.tried_to_find = True
 
         self.log.say(f"MISSING: {list_item.file_name}")
@@ -104,16 +104,33 @@ class ImageList:
 
         #  If another item with the same parent path has already been found,
         #  then look in that item's new location first.
-        if self.find_per_same_parent(list_item):
+        if self._find_per_same_parent(list_item):
             return
 
-        #  Look for the file by walking up the original parent path.
         globpat = f"**/{list_item.file_name}"
 
-        parents = list(Path(list_item.orig_parent).parents)
+        if len(search_dir) == 0:
+            #  Look for the file by walking up the original parent path.
+            parents = list(Path(list_item.orig_parent).parents)
 
-        #  Stop before top-level directory under root.
-        for p in parents[:-2]:
+            #  Stop before top-level directory under root.
+            for p in parents[:-2]:
+                self.log.say(f"Searching {p}")
+                found = list(p.glob(globpat))
+                if 0 < len(found):
+                    if 1 < len(found):
+                        self.log.say(
+                            "Found more than one match. Using first one."
+                        )
+                        for x in found:
+                            self.log.add(f"  '{x}'")
+                    list_item.new_path = str(found[0])
+                    self.log.say(f"Found '{list_item.new_path}'")
+                    return
+            self.log.say("Not found :(")
+        else:
+            #  If search_dir was specified then only search under that path.
+            p = Path(search_dir)
             self.log.say(f"Searching {p}")
             found = list(p.glob(globpat))
             if 0 < len(found):
@@ -124,12 +141,12 @@ class ImageList:
                 list_item.new_path = str(found[0])
                 self.log.say(f"Found '{list_item.new_path}'")
                 return
-        self.log.say("Not found :(")
+            self.log.say("Not found :(")
 
-    def find_files(self):
+    def find_files(self, search_dir: str):
         for item in self.items:
             if item.do_find():
-                self.find_file(item)
+                self._find_file(search_dir, item)
 
     def write_items_txt(self, suffix: str):
         file_name = f"{app_name}_{run_dt}_ITEMS_{suffix}.txt"
@@ -179,6 +196,7 @@ def get_args():
         "--search-dir",
         dest="search_dir",
         type=str,
+        default="",
         action="store",
         help="Optional. Directory to start search. Default is to search the "
         + "parent path of the current image file path.",
@@ -268,9 +286,11 @@ def main():
         for x in get_option_entries("[images-1]", file_text)
     ]
 
+    log.add(f"search_dir = '{args.search_dir}'")
+
     image_list.write_items_txt("1-before")
 
-    image_list.find_files()
+    image_list.find_files(args.search_dir)
 
     image_list.write_items_txt("2-after")
 

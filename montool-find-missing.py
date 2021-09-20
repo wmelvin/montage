@@ -29,15 +29,11 @@ class Lawg:
         print(text)
         self.add(text)
 
-    def write_out(self, output_dir):
-        file_name = Path(output_dir).joinpath(self.file_name)
-        print(f"Writing '{file_name}'")
-        with open(file_name, "w") as f:
+    def write_out(self):
+        print(f"Writing '{self.file_name}'")
+        with open(self.file_name, "w") as f:
             for entry in self.entries:
                 f.write(f"{entry}\n")
-
-
-log = Lawg(f"{app_name}_{run_dt}_LOG.txt")
 
 
 class ImageListItem:
@@ -71,8 +67,9 @@ class ImageListItem:
 
 
 class ImageList:
-    def __init__(self):
-
+    def __init__(self, output_dir: str, log: Lawg):
+        self.output_dir = output_dir
+        self.log = log
         self.items: List[ImageListItem] = []
 
     def get_same_path(self, list_item: ImageListItem):
@@ -86,24 +83,24 @@ class ImageList:
         globpat = f"**/{list_item.file_name}"
         same_parent_path = self.get_same_path(list_item)
         if 0 < len(same_parent_path):
-            log.say("Found another item with the same parent path.")
-            log.say(f"Searching {same_parent_path}")
+            self.log.say("Found another item with the same parent path.")
+            self.log.say(f"Searching {same_parent_path}")
             found = list(Path(same_parent_path).glob(globpat))
             if 0 < len(found):
                 if 1 < len(found):
-                    log.say("Found more than one match. Using first one.")
+                    self.log.say("Found more than one match. Using first one.")
                     for x in found:
-                        log.add(f"  '{x}'")
+                        self.log.add(f"  '{x}'")
                 list_item.new_path = str(found[0])
-                log.say(f"Found '{list_item.new_path}'")
+                self.log.say(f"Found '{list_item.new_path}'")
                 return True
         return False
 
     def find_file(self, list_item: ImageListItem):
         list_item.tried_to_find = True
 
-        log.say(f"MISSING: {list_item.file_name}")
-        log.say(f"Original location: {list_item.orig_parent}")
+        self.log.say(f"MISSING: {list_item.file_name}")
+        self.log.say(f"Original location: {list_item.orig_parent}")
 
         #  If another item with the same parent path has already been found,
         #  then look in that item's new location first.
@@ -117,28 +114,28 @@ class ImageList:
 
         #  Stop before top-level directory under root.
         for p in parents[:-2]:
-            log.say(f"Searching {p}")
+            self.log.say(f"Searching {p}")
             found = list(p.glob(globpat))
             if 0 < len(found):
                 if 1 < len(found):
-                    log.say("Found more than one match. Using first one.")
+                    self.log.say("Found more than one match. Using first one.")
                     for x in found:
-                        log.add(f"  '{x}'")
+                        self.log.add(f"  '{x}'")
                 list_item.new_path = str(found[0])
-                log.say(f"Found '{list_item.new_path}'")
+                self.log.say(f"Found '{list_item.new_path}'")
                 return
-        log.say("Not found :(")
+        self.log.say("Not found :(")
 
     def find_files(self):
         for item in self.items:
             if item.do_find():
                 self.find_file(item)
 
-    def write_items_txt(self, output_dir: str, suffix: str):
+    def write_items_txt(self, suffix: str):
         file_name = f"{app_name}_{run_dt}_ITEMS_{suffix}.txt"
-        file_name = Path(output_dir).joinpath(file_name)
+        file_name = Path(self.output_dir).joinpath(file_name)
 
-        log.say(f"Writing '{file_name}'")
+        self.log.say(f"Writing '{file_name}'")
 
         with open(file_name, "w") as f:
             for i in self.items:
@@ -159,10 +156,10 @@ class ImageList:
                 s += "\n"
         return s
 
-    def write_output_txt(self, output_dir: str):
+    def write_output_txt(self):
         file_name = f"{app_name}_{run_dt}_OUTPUT.txt"
-        file_name = Path(output_dir).joinpath(file_name)
-        log.say(f"Writing '{file_name}'")
+        file_name = Path(self.output_dir).joinpath(file_name)
+        self.log.say(f"Writing '{file_name}'")
         with open(file_name, "w") as f:
             f.write(self.get_section("background-images"))
             f.write(self.get_section("images"))
@@ -219,7 +216,7 @@ def get_option_entries(opt_section, opt_content):
 
 
 def main():
-    log.say(f"\n{app_title}\n")
+    print(f"\n{app_title}\n")
 
     args = get_args()
 
@@ -244,12 +241,17 @@ def main():
         )
         sys.exit(1)
 
-    log.say(f"Reading {args.opt_file}.")
+    log_name = f"{app_name}_{run_dt}_LOG.txt"
+    log_name = Path(output_dir).joinpath(log_name)
+    log = Lawg(log_name)
+
+    log.add(f"Running {app_title}")
+    log.say(f"Reading '{args.opt_file}'")
 
     with open(opt_path, "r") as f:
         file_text = f.readlines()
 
-    image_list = ImageList()
+    image_list = ImageList(output_dir, log)
 
     image_list.items += [
         ImageListItem("background-images", x)
@@ -266,15 +268,15 @@ def main():
         for x in get_option_entries("[images-1]", file_text)
     ]
 
-    image_list.write_items_txt(output_dir, "1-before")
+    image_list.write_items_txt("1-before")
 
     image_list.find_files()
 
-    image_list.write_items_txt(output_dir, "2-after")
+    image_list.write_items_txt("2-after")
 
-    image_list.write_output_txt(output_dir)
+    image_list.write_output_txt()
 
-    log.write_out(output_dir)
+    log.write_out()
 
 
 if __name__ == "__main__":

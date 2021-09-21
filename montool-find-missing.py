@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List
 
 
-app_version = "210920.1"
+app_version = "210921.1"
 
 app_name = "montool-find-missing"
 
@@ -18,22 +18,41 @@ run_dt = datetime.now().strftime("%y%m%d_%H%M%S")
 
 
 class Lawg:
-    def __init__(self, file_name: str):
+    def __init__(
+        self, file_name: str, include_timestamp: bool, do_write_now: bool
+    ):
         self.file_name = file_name
+        self.include_timestamp = include_timestamp
+        self.do_write_now = do_write_now
         self.entries: List[str] = []
 
     def add(self, text: str):
-        self.entries.append(text)
+        if self.include_timestamp:
+            s = "[{0}]: {1}".format(
+                datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+                text
+            )
+        else:
+            s = text
+        if self.do_write_now:
+            self.write_now(s)
+        else:
+            self.entries.append(s)
 
     def say(self, text: str):
         print(text)
         self.add(text)
 
+    def write_now(self, text: str):
+        with open(self.file_name, "a") as f:
+            f.write(f"{text}\n")
+
     def write_out(self):
-        print(f"Writing '{self.file_name}'")
-        with open(self.file_name, "w") as f:
-            for entry in self.entries:
-                f.write(f"{entry}\n")
+        if 0 < len(self.entries):
+            print(f"Writing '{self.file_name}'")
+            with open(self.file_name, "w") as f:
+                for entry in self.entries:
+                    f.write(f"{entry}\n")
 
 
 class ImageListItem:
@@ -159,10 +178,12 @@ class ImageList:
                 f.write(f"{i}\n")
                 f.write(f"{i.as_str()}\n")
 
-    def get_section(self, tag: str) -> List[str]:
+    def _get_section(self, tag: str) -> List[str]:
         s = f"\n[{tag}]\n"
+        has_tag = False
         for item in self.items:
             if item.list_name == tag:
+                has_tag = True
                 if item.original_exists:
                     s += f"{item.original_path}\n"
                 elif 0 < len(item.new_path):
@@ -171,16 +192,30 @@ class ImageList:
                 else:
                     s += f"# NOT FOUND: {item.original_path}\n"
                 s += "\n"
-        return s
+        if has_tag:
+            return s
+        else:
+            return ''
+
+    def _get_commented(self, tag: str) -> List[str]:
+        s = self._get_section(tag)
+        if len(s) == 0:
+            return ''
+        t = ""
+        for x in s.split("\n"):
+            t += f"# {x}\n"
+        return t
 
     def write_output_txt(self):
         file_name = f"{app_name}_{run_dt}_OUTPUT.txt"
         file_name = Path(self.output_dir).joinpath(file_name)
         self.log.say(f"Writing '{file_name}'")
         with open(file_name, "w") as f:
-            f.write(self.get_section("background-images"))
-            f.write(self.get_section("images"))
-            f.write(self.get_section("images-1"))
+            f.write(self._get_commented("feature-1"))
+            f.write(self._get_commented("feature-2"))
+            f.write(self._get_section("background-images"))
+            f.write(self._get_section("images"))
+            f.write(self._get_section("images-1"))
 
 
 def get_args():
@@ -214,6 +249,16 @@ def get_args():
     )
 
     return ap.parse_args()
+
+
+def get_opt_str(default, opt_name, content):
+    for opt in content:
+        if opt.strip().startswith(opt_name):
+            a = opt.split('=', 1)
+            if len(a) == 2:
+                if a[0].strip() == opt_name:
+                    return a[1].strip("'\" ")
+    return default
 
 
 def get_option_entries(opt_section, opt_content):
@@ -261,7 +306,7 @@ def main():
 
     log_name = f"{app_name}_{run_dt}_LOG.txt"
     log_name = Path(output_dir).joinpath(log_name)
-    log = Lawg(log_name)
+    log = Lawg(log_name, include_timestamp=False, do_write_now=True)
 
     log.add(f"Running {app_title}")
     log.say(f"Reading '{args.opt_file}'")
@@ -270,6 +315,22 @@ def main():
         file_text = f.readlines()
 
     image_list = ImageList(output_dir, log)
+
+    section_text = get_option_entries("[feature-1]", file_text)
+    if 0 < len(section_text):
+        feature_img = get_opt_str('', 'file', section_text)
+        if 0 < len(feature_img):
+            image_list.items.append(
+                ImageListItem("feature-1", feature_img)
+            )
+
+    section_text = get_option_entries("[feature-2]", file_text)
+    if 0 < len(section_text):
+        feature_img = get_opt_str('', 'file', section_text)
+        if 0 < len(feature_img):
+            image_list.items.append(
+                ImageListItem("feature-2", feature_img)
+            )
 
     image_list.items += [
         ImageListItem("background-images", x)

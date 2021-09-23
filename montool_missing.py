@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import List
 
 
-app_version = "210921.1"
+app_version = "210923.1"
 
-app_name = "montool-find-missing"
+app_name = "montool_missing"
 
 app_title = f"{app_name}.py (version {app_version})"
 
@@ -29,8 +29,7 @@ class Lawg:
     def add(self, text: str):
         if self.include_timestamp:
             s = "[{0}]: {1}".format(
-                datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-                text
+                datetime.now().strftime("%Y-%m-%dT%H:%M:%S"), text
             )
         else:
             s = text
@@ -71,14 +70,14 @@ class ImageListItem:
         return f"ImageListItem('{self.list_name}', '{self.original_path}')"
 
     def as_str(self):
-        s = f"  {self.list_name=}\n"
-        s += f"  {self.original_path=}\n"
-        s += f"  {self.path_expanded=}\n"
-        s += f"  {self.orig_parent=}\n"
-        s += f"  {self.file_name=}\n"
-        s += f"  {self.original_exists=}\n"
-        s += f"  {self.tried_to_find=}\n"
-        s += f"  {self.new_path=}\n"
+        s = f"  list_name = '{self.list_name}'\n"
+        s += f"  original_path = '{self.original_path}'\n"
+        s += f"  path_expanded = '{self.path_expanded}'\n"
+        s += f"  orig_parent = '{self.orig_parent}'\n"
+        s += f"  file_name = '{self.file_name}'\n"
+        s += f"  original_exists = {self.original_exists}\n"
+        s += f"  tried_to_find = {self.tried_to_find}\n"
+        s += f"  new_path = '{self.new_path}'\n"
         return s
 
     def do_find(self):
@@ -195,12 +194,12 @@ class ImageList:
         if has_tag:
             return s
         else:
-            return ''
+            return ""
 
     def _get_commented(self, tag: str) -> List[str]:
         s = self._get_section(tag)
         if len(s) == 0:
-            return ''
+            return ""
         t = ""
         for x in s.split("\n"):
             t += f"# {x}\n"
@@ -254,7 +253,7 @@ def get_args():
 def get_opt_str(default, opt_name, content):
     for opt in content:
         if opt.strip().startswith(opt_name):
-            a = opt.split('=', 1)
+            a = opt.split("=", 1)
             if len(a) == 2:
                 if a[0].strip() == opt_name:
                     return a[1].strip("'\" ")
@@ -318,19 +317,15 @@ def main():
 
     section_text = get_option_entries("[feature-1]", file_text)
     if 0 < len(section_text):
-        feature_img = get_opt_str('', 'file', section_text)
+        feature_img = get_opt_str("", "file", section_text)
         if 0 < len(feature_img):
-            image_list.items.append(
-                ImageListItem("feature-1", feature_img)
-            )
+            image_list.items.append(ImageListItem("feature-1", feature_img))
 
     section_text = get_option_entries("[feature-2]", file_text)
     if 0 < len(section_text):
-        feature_img = get_opt_str('', 'file', section_text)
+        feature_img = get_opt_str("", "file", section_text)
         if 0 < len(feature_img):
-            image_list.items.append(
-                ImageListItem("feature-2", feature_img)
-            )
+            image_list.items.append(ImageListItem("feature-2", feature_img))
 
     image_list.items += [
         ImageListItem("background-images", x)

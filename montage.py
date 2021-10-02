@@ -12,7 +12,7 @@ from pathlib import Path
 
 MAX_SHUFFLE_COUNT = 99
 
-app_version = "211002.1"
+app_version = "211002.2"
 
 pub_version = "1.0.dev1"
 
@@ -305,6 +305,36 @@ class MontageOptions:
                     for i in self._log:
                         f.write(f"{i}\n")
 
+    def check_feature(self, feat_num: int, feat_attr: FeatureImage):
+        errors = []
+        numeric_attrs = [
+            feat_attr.col,
+            feat_attr.ncols,
+            feat_attr.row,
+            feat_attr.nrows,
+        ]
+
+        if any(0 < x for x in numeric_attrs):
+            if any(x <= 0 for x in numeric_attrs):
+                errors.append(
+                    f"Feature-{feat_num}: All column and row settings must "
+                    + "be set to not-zero values if any are set."
+                )
+                if len(feat_attr.file_name) == 0:
+                    errors.append(
+                        f"Feature-{feat_num}: File name must be set."
+                    )
+
+        if 0 < len(feat_attr.file_name):
+            if not Path(feat_attr.file_name).exists():
+                errors.append(
+                    "Feature-{0}: Image file not found: '{1}'.".format(
+                        feat_num, feat_attr.file_name
+                    )
+                )
+
+        return errors
+
     def check_options(self):
         errors = []
 
@@ -330,6 +360,10 @@ class MontageOptions:
                 errors.append(
                     f"Background image file not found: '{file_name}'."
                 )
+
+        errors += self.check_feature(1, self.feature1)
+
+        errors += self.check_feature(2, self.feature2)
 
         if 0 < len(errors):
             print("\nCANNOT PROCEED")
@@ -982,10 +1016,8 @@ def get_rgba(default, arg_str):
         return default
 
 
-def place_feature(opts: MontageOptions, feat_attr, cell_size):
+def place_feature(opts: MontageOptions, feat_attr: FeatureImage, cell_size):
     if feat_attr.nrows and feat_attr.ncols:
-        assert 0 < feat_attr.nrows
-        assert 0 < feat_attr.ncols
         x = opts.margin + ((feat_attr.col - 1) * cell_size[0]) + opts.padding
         y = opts.margin + ((feat_attr.row - 1) * cell_size[1]) + opts.padding
         w = int((cell_size[0] * feat_attr.ncols) - (opts.padding * 2))
@@ -993,7 +1025,7 @@ def place_feature(opts: MontageOptions, feat_attr, cell_size):
         opts.add_placement(x, y, w, h, feat_attr.file_name)
 
 
-def outside_feat(col_index, row_index, feat_attr):
+def outside_feat(col_index, row_index, feat_attr: FeatureImage):
     if feat_attr.nrows and feat_attr.ncols:
         a = (col_index + 1) in range(
             feat_attr.col, feat_attr.col + feat_attr.ncols
@@ -1116,6 +1148,8 @@ def create_image(opts: MontageOptions, image_num: int):
                 i += 1
             else:
                 image_name = place.file_name
+
+            assert 0 < len(image_name)
 
             opts.log_say(f"Placing image '{image_name}'")
 

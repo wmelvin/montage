@@ -12,19 +12,17 @@ from pathlib import Path
 
 MAX_SHUFFLE_COUNT = 99
 
-app_version = '211002.1'
+app_version = "211002.1"
 
-pub_version = '1.0.dev1'
+pub_version = "1.0.dev1"
 
-app_title = f'montage.py - version {app_version}'
+app_title = f"montage.py - version {app_version}"
 
 # global confirm_errors
 confirm_errors = True
 
 
-FeatureImage = namedtuple(
-    'FeatureImage', 'col, ncols, row, nrows, file_name'
-)
+FeatureImage = namedtuple("FeatureImage", "col, ncols, row, nrows, file_name")
 
 
 class Placement:
@@ -37,9 +35,8 @@ class Placement:
 
 
 class MontageDefaults:
-
     def __init__(self):
-        self.file_name = 'output.jpg'
+        self.file_name = "output.jpg"
         self.canvas_width = 640
         self.canvas_height = 480
         self.margin = 10
@@ -85,7 +82,7 @@ class MontageOptions:
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
 
-    def add_placement(self, x, y, w, h, file_name=''):
+    def add_placement(self, x, y, w, h, file_name=""):
         self._placements.append(Placement(x, y, w, h, file_name))
 
     def get_placements_list(self) -> List[Placement]:
@@ -121,12 +118,12 @@ class MontageOptions:
         return a[0]
 
     def set_cols_rows(self):
-        if 'c' in self.shuffle_mode:
-            self.cols = self.get_shuffled(self.init_ncols, 'wc')
+        if "c" in self.shuffle_mode:
+            self.cols = self.get_shuffled(self.init_ncols, "wc")
         else:
             self.cols = self.init_ncols
-        if 'r' in self.shuffle_mode:
-            self.rows = self.get_shuffled(self.init_nrows, 'wr')
+        if "r" in self.shuffle_mode:
+            self.rows = self.get_shuffled(self.init_nrows, "wr")
         else:
             self.rows = self.init_nrows
 
@@ -141,7 +138,7 @@ class MontageOptions:
         return self.rows
 
     def do_shuffle_images(self):
-        return 'i' in self.shuffle_mode
+        return "i" in self.shuffle_mode
 
     def shuffle_images(self):
         n_images = self.cols * self.rows
@@ -149,7 +146,7 @@ class MontageOptions:
         if self.do_shuffle_images():
             random.shuffle(self.images_list)
             if 0 < len(self.image_list_b):
-                self.images_list = self.images_list[:n_images - 1]
+                self.images_list = self.images_list[: n_images - 1]
                 temp_list = [] + self.image_list_b
                 random.shuffle(temp_list)
                 self.images_list.append(temp_list[0])
@@ -161,7 +158,7 @@ class MontageOptions:
             self.images_list = self.images_list[:n_images]
 
     def do_shuffle_bg_images(self):
-        return 'b' in self.shuffle_mode
+        return "b" in self.shuffle_mode
 
     def shuffle_bg_images(self):
         if self.do_shuffle_bg_images():
@@ -189,9 +186,9 @@ class MontageOptions:
 
     def _timestamp_str(self):
         if 2 < self.stamp_mode:
-            fmt_str = '%Y%m%d_%H%M%S_%f'
+            fmt_str = "%Y%m%d_%H%M%S_%f"
         else:
-            fmt_str = '%Y%m%d_%H%M%S'
+            fmt_str = "%Y%m%d_%H%M%S"
         return self._run_dt.strftime(fmt_str)
 
     def image_file_name(self, image_num):
@@ -206,38 +203,32 @@ class MontageOptions:
         p = Path(self.output_file_name)
 
         if 1 < self.shuffle_count:
-            p = Path('{0}-{1:02d}'.format(
-                p.with_suffix(''),
-                image_num)
+            p = Path(
+                "{0}-{1:02d}".format(p.with_suffix(""), image_num)
             ).with_suffix(p.suffix)
 
         if self.stamp_mode in [1, 3]:
             #  Mode 1: date_time stamp at left of file name.
-            p = Path('{0}_{1}'.format(
-                self._timestamp_str(),
-                p.with_suffix(''))
+            p = Path(
+                "{0}_{1}".format(self._timestamp_str(), p.with_suffix(""))
             ).with_suffix(p.suffix)
         elif self.stamp_mode in [2, 4]:
             #  Mode 2: date_time stamp at right of file name.
-            p = Path('{0}_{1}'.format(
-                p.with_suffix(''),
-                self._timestamp_str())
+            p = Path(
+                "{0}_{1}".format(p.with_suffix(""), self._timestamp_str())
             ).with_suffix(p.suffix)
 
         return str(dir.joinpath(p))
 
     def _options_as_str(self):
-        s = ''
+        s = ""
         s += "\n[settings]\n"
         s += f"output_file={qs(self.output_file_name)}\n"
         s += f"output_dir={qs(self.output_dir)}\n"
         s += f"canvas_width={self.canvas_width}\n"
         s += f"canvas_height={self.canvas_height}\n"
         s += "background_rgba={0},{1},{2},{3}\n".format(
-            self.bg_rgba[0],
-            self.bg_rgba[1],
-            self.bg_rgba[2],
-            self.bg_rgba[3]
+            self.bg_rgba[0], self.bg_rgba[1], self.bg_rgba[2], self.bg_rgba[3]
         )
         s += f"background_blur={self.bg_blur}\n"
         s += f"columns={self.init_ncols}\n"
@@ -249,7 +240,7 @@ class MontageOptions:
             self.border_rgba[0],
             self.border_rgba[1],
             self.border_rgba[2],
-            self.border_rgba[3]
+            self.border_rgba[3],
         )
         s += f"do_zoom={self.do_zoom}\n"
         s += f"shuffle_mode={self.shuffle_mode}\n"
@@ -289,16 +280,19 @@ class MontageOptions:
         if self.write_opts:
             p = Path(image_file_name)
 
-            file_name = str(Path('{0}_{1}'.format(
-                p.with_suffix(''), 'options')
-            ).with_suffix('.txt'))
+            file_name = str(
+                Path(
+                    "{0}_{1}".format(p.with_suffix(""), "options")
+                ).with_suffix(".txt")
+            )
 
             print(f"\nWriting options to '{file_name}'\n")
-            with open(file_name, 'w') as f:
-                f.write("# Created {0} by {1}\n".format(
-                    datetime.now().strftime('%Y-%m-%d %H:%M'),
-                    app_title
-                ))
+            with open(file_name, "w") as f:
+                f.write(
+                    "# Created {0} by {1}\n".format(
+                        datetime.now().strftime("%Y-%m-%d %H:%M"), app_title
+                    )
+                )
 
                 f.write(self._options_as_str())
 
@@ -316,9 +310,7 @@ class MontageOptions:
 
         if 0 < len(self.output_dir):
             if not Path(self.output_dir).exists():
-                errors.append(
-                    f"Output folder not found: '{self.output_dir}'."
-                )
+                errors.append(f"Output folder not found: '{self.output_dir}'.")
 
             if not Path(self.output_dir).is_dir():
                 errors.append(
@@ -327,15 +319,11 @@ class MontageOptions:
 
         for file_name in self.image_list_a:
             if not Path(file_name).exists():
-                errors.append(
-                    f"Image file not found: '{file_name}'."
-                )
+                errors.append(f"Image file not found: '{file_name}'.")
 
         for file_name in self.image_list_b:
             if not Path(file_name).exists():
-                errors.append(
-                    f"Image file not found: '{file_name}'."
-                )
+                errors.append(f"Image file not found: '{file_name}'.")
 
         for file_name in self.bg_image_list:
             if not Path(file_name).exists():
@@ -361,71 +349,68 @@ class MontageOptions:
                     input("Press [Enter]. ")
                 sys.exit(1)
 
-            with open(p, 'r') as f:
+            with open(p, "r") as f:
                 file_text = f.readlines()
 
-            settings = get_option_entries('[settings]', file_text)
+            settings = get_option_entries("[settings]", file_text)
 
             warn_old_settings(settings)
 
-            self.output_file_name = get_opt_str(None, 'output_file', settings)
+            self.output_file_name = get_opt_str(None, "output_file", settings)
 
-            self.output_dir = get_opt_str(None, 'output_dir', settings)
+            self.output_dir = get_opt_str(None, "output_dir", settings)
 
-            self.canvas_width = get_opt_int(None, 'canvas_width', settings)
+            self.canvas_width = get_opt_int(None, "canvas_width", settings)
 
-            self.canvas_height = get_opt_int(None, 'canvas_height', settings)
+            self.canvas_height = get_opt_int(None, "canvas_height", settings)
 
-            self.init_ncols = get_opt_int(None, 'columns', settings)
+            self.init_ncols = get_opt_int(None, "columns", settings)
 
-            self.init_nrows = get_opt_int(None, 'rows', settings)
+            self.init_nrows = get_opt_int(None, "rows", settings)
 
-            self.margin = get_opt_int(None, 'margin', settings)
+            self.margin = get_opt_int(None, "margin", settings)
 
-            self.padding = get_opt_int(None, 'padding', settings)
+            self.padding = get_opt_int(None, "padding", settings)
 
-            self.border_width = get_opt_int(None, 'border_width', settings)
+            self.border_width = get_opt_int(None, "border_width", settings)
 
-            self.border_rgba = get_opt_str(None, 'border_rgba', settings)
+            self.border_rgba = get_opt_str(None, "border_rgba", settings)
 
-            self.bg_rgba = get_opt_str(None, 'background_rgba', settings)
+            self.bg_rgba = get_opt_str(None, "background_rgba", settings)
 
-            self.bg_blur = get_opt_int(None, 'background_blur', settings)
+            self.bg_blur = get_opt_int(None, "background_blur", settings)
 
-            self.shuffle_mode = get_opt_str(None, 'shuffle_mode', settings)
+            self.shuffle_mode = get_opt_str(None, "shuffle_mode", settings)
 
-            self.shuffle_count = get_opt_int(None, 'shuffle_count', settings)
+            self.shuffle_count = get_opt_int(None, "shuffle_count", settings)
 
-            self.stamp_mode = get_opt_int(None, 'stamp_mode', settings)
+            self.stamp_mode = get_opt_int(None, "stamp_mode", settings)
 
-            self.write_opts = get_opt_bool(None, 'write_opts', settings)
+            self.write_opts = get_opt_bool(None, "write_opts", settings)
 
-            self.do_zoom = get_opt_bool(None, 'do_zoom', settings)
+            self.do_zoom = get_opt_bool(None, "do_zoom", settings)
 
             self.feature1 = get_opt_feat(
-                get_option_entries('[feature-1]', file_text), True
+                get_option_entries("[feature-1]", file_text), True
             )
 
             self.feature2 = get_opt_feat(
-                get_option_entries('[feature-2]', file_text), True
+                get_option_entries("[feature-2]", file_text), True
             )
 
             self.image_list_a += [
-                i.strip("'\"") for i in get_option_entries(
-                    '[images]', file_text
-                )
+                i.strip("'\"")
+                for i in get_option_entries("[images]", file_text)
             ]
 
             self.image_list_b += [
-                i.strip("'\"") for i in get_option_entries(
-                    '[images-1]', file_text
-                )
+                i.strip("'\"")
+                for i in get_option_entries("[images-1]", file_text)
             ]
 
             self.bg_image_list += [
-                i.strip("'\"") for i in get_option_entries(
-                    '[background-images]', file_text
-                )
+                i.strip("'\"")
+                for i in get_option_entries("[background-images]", file_text)
             ]
 
     def _set_defaults(self, defaults):
@@ -435,7 +420,7 @@ class MontageOptions:
             self.output_file_name = defaults.file_name
 
         if self.output_dir is None:
-            self.output_dir = ''
+            self.output_dir = ""
 
         if self.canvas_width is None:
             self.canvas_width = defaults.canvas_width
@@ -461,22 +446,18 @@ class MontageOptions:
         if self.border_rgba is None:
             self.border_rgba = defaults.border_rgba
         elif type(self.border_rgba) == str:
-            self.border_rgba = get_rgba(
-                defaults.border_rgba, self.border_rgba
-            )
+            self.border_rgba = get_rgba(defaults.border_rgba, self.border_rgba)
 
         if self.bg_rgba is None:
             self.bg_rgba = defaults.background_rgba
         elif type(self.bg_rgba) == str:
-            self.bg_rgba = get_rgba(
-                defaults.background_rgba, self.bg_rgba
-            )
+            self.bg_rgba = get_rgba(defaults.background_rgba, self.bg_rgba)
 
         if self.bg_blur is None:
             self.bg_blur = defaults.bg_blur
 
         if self.shuffle_mode is None:
-            self.shuffle_mode = ''
+            self.shuffle_mode = ""
 
         if self.shuffle_count is None:
             self.shuffle_count = 1
@@ -491,10 +472,10 @@ class MontageOptions:
             self.do_zoom = False
 
         if self.feature1 is None:
-            self.feature1 = get_opt_feat('', False)
+            self.feature1 = get_opt_feat("", False)
 
         if self.feature2 is None:
-            self.feature2 = get_opt_feat('', False)
+            self.feature2 = get_opt_feat("", False)
 
     def load(self, args, defaults: MontageDefaults, settings_file=None):
         if args is None and settings_file is None:
@@ -597,12 +578,12 @@ def get_list_from_file(file_name):
 
     result = []
 
-    with open(p, 'r') as f:
+    with open(p, "r") as f:
         file_text = f.readlines()
 
     for line in file_text:
         s = line.strip()
-        if (0 < len(s)) and not s.startswith('#'):
+        if (0 < len(s)) and not s.startswith("#"):
             result.append(s)
 
     return result
@@ -612,7 +593,7 @@ def expand_image_list(raw_list):
     new_list = []
     if (raw_list is not None) and (0 < len(raw_list)):
         for item in raw_list:
-            if item.startswith('@'):
+            if item.startswith("@"):
                 new_list += get_list_from_file(item[1:])
             else:
                 new_list.append(item)
@@ -621,19 +602,18 @@ def expand_image_list(raw_list):
 
 def warn_old_settings(settings):
     old_settings = {
-        'background_rgb': "Replaced by 'background_rgba'",
-        'bg_alpha': "Replaced by 'background_rgba'",
-        'bg_blur': "Replaced by 'background_blur'"
+        "background_rgb": "Replaced by 'background_rgba'",
+        "bg_alpha": "Replaced by 'background_rgba'",
+        "bg_blur": "Replaced by 'background_blur'",
     }
     for line in settings:
-        a = line.split('=', 1)
+        a = line.split("=", 1)
         if len(a) == 2:
             setting_name = a[0].strip()
             if setting_name in old_settings.keys():
                 print(
                     "WARNING: Obsolete setting '{0}': {1}".format(
-                        setting_name,
-                        old_settings[setting_name]
+                        setting_name, old_settings[setting_name]
                     )
                 )
 
@@ -641,142 +621,153 @@ def warn_old_settings(settings):
 def get_arguments():
     ap = argparse.ArgumentParser(
         formatter_class=argparse.RawTextHelpFormatter,
-        description='Create an image montage given a list of image files.'
+        description="Create an image montage given a list of image files.",
     )
 
     ap.add_argument(
-        'images',
-        nargs='*',
-        action='store',
-        help='Images files to include in the montage image. '
-        + 'Multiple files can be specified.'
+        "images",
+        nargs="*",
+        action="store",
+        help="Images files to include in the montage image. "
+        + "Multiple files can be specified.",
     )
 
     ap.add_argument(
-        '-o', '--output-file',
-        dest='output_file',
-        action='store',
-        help='Name of output file.'
+        "-o",
+        "--output-file",
+        dest="output_file",
+        action="store",
+        help="Name of output file.",
     )
 
     ap.add_argument(
-        '-d', '--output-dir',
-        dest='output_dir',
-        action='store',
-        help='Name of output directory.'
+        "-d",
+        "--output-dir",
+        dest="output_dir",
+        action="store",
+        help="Name of output directory.",
     )
 
     ap.add_argument(
-        '-x', '--canvas-width',
-        dest='canvas_width',
+        "-x",
+        "--canvas-width",
+        dest="canvas_width",
         type=int,
-        action='store',
-        help='Canvas width in pixels.'
+        action="store",
+        help="Canvas width in pixels.",
     )
 
     ap.add_argument(
-        '-y', '--canvas-height',
-        dest='canvas_height',
+        "-y",
+        "--canvas-height",
+        dest="canvas_height",
         type=int,
-        action='store',
-        help='Canvas height in pixels.'
+        action="store",
+        help="Canvas height in pixels.",
     )
 
     ap.add_argument(
-        '-c', '--columns',
-        dest='cols',
+        "-c",
+        "--columns",
+        dest="cols",
         type=int,
-        action='store',
-        help='Number of columns.'
+        action="store",
+        help="Number of columns.",
     )
 
     ap.add_argument(
-        '-r', '--rows',
-        dest='rows',
+        "-r",
+        "--rows",
+        dest="rows",
         type=int,
-        action='store',
-        help='Number of rows.'
+        action="store",
+        help="Number of rows.",
     )
 
     ap.add_argument(
-        '-m', '--margin',
-        dest='margin',
+        "-m",
+        "--margin",
+        dest="margin",
         type=int,
-        action='store',
-        help='Margin in pixels.'
+        action="store",
+        help="Margin in pixels.",
     )
 
     ap.add_argument(
-        '-p', '--padding',
-        dest='padding',
+        "-p",
+        "--padding",
+        dest="padding",
         type=int,
-        action='store',
-        help='Padding in pixels.'
+        action="store",
+        help="Padding in pixels.",
     )
 
     ap.add_argument(
-        '-b', '--background-rgba',
-        dest='bg_rgba_str',
+        "-b",
+        "--background-rgba",
+        dest="bg_rgba_str",
         type=str,
-        action='store',
-        help='Background color as red,green,blue,alpha.'
+        action="store",
+        help="Background color as red,green,blue,alpha.",
     )
 
     ap.add_argument(
-        '--border-width',
-        dest='border_width',
+        "--border-width",
+        dest="border_width",
         type=int,
-        action='store',
-        help='Border width in pixels.'
+        action="store",
+        help="Border width in pixels.",
     )
 
     ap.add_argument(
-        '--border-rgba',
-        dest='border_rgba_str',
+        "--border-rgba",
+        dest="border_rgba_str",
         type=str,
-        action='store',
-        help='Border color as red,green,blue,alpha.'
+        action="store",
+        help="Border color as red,green,blue,alpha.",
     )
 
     ap.add_argument(
-        '-g', '--background-image',
-        dest='bg_file',
-        action='store',
-        help='Name of image file to use as the background image.'
+        "-g",
+        "--background-image",
+        dest="bg_file",
+        action="store",
+        help="Name of image file to use as the background image.",
     )
 
     ap.add_argument(
-        '--background-blur',
-        dest='bg_blur',
+        "--background-blur",
+        dest="bg_blur",
         type=int,
-        action='store',
-        help='Blur radius for background image (0 = none).'
+        action="store",
+        help="Blur radius for background image (0 = none).",
     )
 
     ap.add_argument(
-        '--feature-1',
-        dest='feature_1',
+        "--feature-1",
+        dest="feature_1",
         type=str,
-        action='store',
-        help='Attributes for first featured image as '
-        + '(col, ncols, row, nrows, file_name).'
+        action="store",
+        help="Attributes for first featured image as "
+        + "(col, ncols, row, nrows, file_name).",
     )
 
     ap.add_argument(
-        '--feature-2',
-        dest='feature_2',
+        "--feature-2",
+        dest="feature_2",
         type=str,
-        action='store',
-        help='Attributes for second featured image as '
-        + '(col, ncols, row, nrows, file_name).'
+        action="store",
+        help="Attributes for second featured image as "
+        + "(col, ncols, row, nrows, file_name).",
     )
 
     ap.add_argument(
-        '--shuffle-mode',
-        dest='shuffle_mode',
+        "--shuffle-mode",
+        dest="shuffle_mode",
         type=str,
-        action='store',
-        help=textwrap.dedent('''\
+        action="store",
+        help=textwrap.dedent(
+            """\
             Flags that control shuffling (random order):
                 i = images
                 b = background image
@@ -786,59 +777,64 @@ def get_arguments():
                 wr = weighted rows
                 (weighted favors larger numbers)
             Example: --shuffle-mode=ibwc
-        ''')
+        """
+        ),
     )
 
     ap.add_argument(
-        '--shuffle-count',
-        dest='shuffle_count',
+        "--shuffle-count",
+        dest="shuffle_count",
         type=int,
-        action='store',
-        help='Number of output files to create when using --shuffle-mode.'
+        action="store",
+        help="Number of output files to create when using --shuffle-mode.",
     )
 
     ap.add_argument(
-        '--stamp-mode',
-        dest='stamp_mode',
+        "--stamp-mode",
+        dest="stamp_mode",
         type=int,
-        action='store',
-        help=textwrap.dedent('''\
+        action="store",
+        help=textwrap.dedent(
+            """\
             Mode for adding a date_time stamp to the output file name:
                 0 = none
                 1 = at left of file name
                 2 = at right of file name
                 3 = at left of file name, include microseconds
                 4 = at right of file name, include microseconds
-            ''')
+            """
+        ),
     )
 
     ap.add_argument(
-        '-s', '--settings-file',
-        dest='settings_file',
-        action='store',
-        help='Name of settings file.'
+        "-s",
+        "--settings-file",
+        dest="settings_file",
+        action="store",
+        help="Name of settings file.",
     )
 
     ap.add_argument(
-        '-z', '--zoom',
-        dest='do_zoom',
-        action='store_true',
-        help='Zoom images to fill instead of fitting to frame.'
+        "-z",
+        "--zoom",
+        dest="do_zoom",
+        action="store_true",
+        help="Zoom images to fill instead of fitting to frame.",
     )
 
     ap.add_argument(
-        '-q',
-        dest='do_quit',
-        action='store_true',
-        help='Quit immediately when there is an error. By default you are '
-        + 'asked to press Enter to acknowledge the error message.'
+        "-q",
+        dest="do_quit",
+        action="store_true",
+        help="Quit immediately when there is an error. By default you are "
+        + "asked to press Enter to acknowledge the error message.",
     )
 
     ap.add_argument(
-        '--write-opts',
-        dest='write_opts',
-        action='store_true',
-        help='Write the option settings to a file.'
+        "--write-opts",
+        dest="write_opts",
+        action="store_true",
+        help="Write the option settings to a file.",
     )
 
     # TODO: Add details to help messages.
@@ -851,10 +847,10 @@ def get_option_entries(opt_section, opt_content):
     in_section = False
     for line in opt_content:
         s = line.strip()
-        if (0 < len(s)) and not s.startswith('#'):
+        if (0 < len(s)) and not s.startswith("#"):
             if in_section:
                 # New section?
-                if s.startswith('['):
+                if s.startswith("["):
                     in_section = False
                 else:
                     result.append(s)
@@ -866,7 +862,7 @@ def get_option_entries(opt_section, opt_content):
 def get_opt_str(default, opt_name, content):
     for opt in content:
         if opt.strip().startswith(opt_name):
-            a = opt.split('=', 1)
+            a = opt.split("=", 1)
             if len(a) == 2:
                 if a[0].strip() == opt_name:
                     return a[1].strip("'\" ")
@@ -891,28 +887,28 @@ def get_opt_bool(default, opt_name, content):
     #  The values 'True', 'Yes', 'Y', and '1' are considered True.
     #  Only the first character is checked, so any value starting
     #  with one of those characters is taken as True.
-    return s in ('t', 'y', '1')
+    return s in ("t", "y", "1")
 
 
 def get_feature_args(feat_args):
     if feat_args is None:
-        return FeatureImage(0, 0, 0, 0, '')
+        return FeatureImage(0, 0, 0, 0, "")
 
-    a = feat_args.strip('()').split(',')
+    a = feat_args.strip("()").split(",")
 
     if len(a) != 5:
         print(
             "WARNING: Ignoring invalid feature attributes. ",
-            "Expected five values separated by commas."
+            "Expected five values separated by commas.",
         )
-        return FeatureImage(0, 0, 0, 0, '')
+        return FeatureImage(0, 0, 0, 0, "")
 
     if any(not x.strip().isdigit() for x in a[:-1]):
         print(
             "WARNING: Ignoring invalid feature attributes. ",
-            "Expected first four numeric values are numeric."
+            "Expected first four numeric values are numeric.",
         )
-        return FeatureImage(0, 0, 0, 0, '')
+        return FeatureImage(0, 0, 0, 0, "")
 
     fn = a[4].strip("\\'\" ")
 
@@ -920,11 +916,11 @@ def get_feature_args(feat_args):
 
 
 def get_opt_feat(section_content, default_to_none):
-    col = get_opt_int(0, 'column', section_content)
-    ncols = get_opt_int(0, 'num_columns', section_content)
-    row = get_opt_int(0, 'row', section_content)
-    nrows = get_opt_int(0, 'num_rows', section_content)
-    file_name = get_opt_str('', 'file', section_content)
+    col = get_opt_int(0, "column", section_content)
+    ncols = get_opt_int(0, "num_columns", section_content)
+    row = get_opt_int(0, "row", section_content)
+    nrows = get_opt_int(0, "num_rows", section_content)
+    file_name = get_opt_str("", "file", section_content)
     if (ncols == 0) and default_to_none:
         return None
     else:
@@ -932,16 +928,16 @@ def get_opt_feat(section_content, default_to_none):
 
 
 def qs(s: str) -> str:
-    """ Returns the given string in quotes if it contains spaces. """
+    """Returns the given string in quotes if it contains spaces."""
 
     if s is None:
-        return ''
+        return ""
 
     assert '"' not in s
     #  TODO: Handle this case instead of just asserting? If so, are quotes
     #  doubled ("") or escaped (\")?
 
-    if ' ' in s:
+    if " " in s:
         return f'"{s}"'
     else:
         return s
@@ -951,13 +947,13 @@ def get_rgba(default, arg_str):
     if arg_str is None:
         return default
 
-    a = arg_str.strip().split(',')
+    a = arg_str.strip().split(",")
 
     if any(not x.isdigit() for x in a):
         print(
             "WARNING: Invalid backround color setting. ",
             "Expecting numeric values separated by commas. ",
-            "Using default setting."
+            "Using default setting.",
         )
         return default
 
@@ -965,7 +961,7 @@ def get_rgba(default, arg_str):
         print(
             "WARNING: Invalid backround color setting. ",
             "Expecting numeric values between 0 and 255. ",
-            "Using default setting."
+            "Using default setting.",
         )
         return default
 
@@ -981,15 +977,15 @@ def get_rgba(default, arg_str):
             "WARNING: Invalid color setting. ",
             "Expecting numeric color values separated by commas",
             "('r,g,b' or 'r,g,b,a'). ",
-            "Using default."
+            "Using default.",
         )
         return default
 
 
 def place_feature(opts: MontageOptions, feat_attr, cell_size):
     if feat_attr.nrows and feat_attr.ncols:
-        assert(0 < feat_attr.nrows)
-        assert(0 < feat_attr.ncols)
+        assert 0 < feat_attr.nrows
+        assert 0 < feat_attr.ncols
         x = opts.margin + ((feat_attr.col - 1) * cell_size[0]) + opts.padding
         y = opts.margin + ((feat_attr.row - 1) * cell_size[1]) + opts.padding
         w = int((cell_size[0] * feat_attr.ncols) - (opts.padding * 2))
@@ -1000,12 +996,10 @@ def place_feature(opts: MontageOptions, feat_attr, cell_size):
 def outside_feat(col_index, row_index, feat_attr):
     if feat_attr.nrows and feat_attr.ncols:
         a = (col_index + 1) in range(
-            feat_attr.col,
-            feat_attr.col + feat_attr.ncols
+            feat_attr.col, feat_attr.col + feat_attr.ncols
         )
         b = (row_index + 1) in range(
-            feat_attr.row,
-            feat_attr.row + feat_attr.nrows
+            feat_attr.row, feat_attr.row + feat_attr.nrows
         )
         return not (a and b)
     return True
@@ -1046,28 +1040,16 @@ def get_crop_box(current_size, target_size):
 
 
 def add_border(image, border_size, border_xy, opts):
-    border_image = Image.new(
-        'RGB',
-        border_size,
-        opts.border_rgb()
-    )
+    border_image = Image.new("RGB", border_size, opts.border_rgb())
 
-    border_mask = Image.new(
-        'RGBA',
-        border_size,
-        opts.border_mask_rgba()
-    )
+    border_mask = Image.new("RGBA", border_size, opts.border_mask_rgba())
 
     image.paste(border_image, border_xy, mask=border_mask)
 
 
 def create_image(opts: MontageOptions, image_num: int):
-    cell_w = int(
-        (opts.canvas_width - (opts.margin * 2)) / opts.get_ncols()
-    )
-    cell_h = int(
-        (opts.canvas_height - (opts.margin * 2)) / opts.get_nrows()
-    )
+    cell_w = int((opts.canvas_width - (opts.margin * 2)) / opts.get_ncols())
+    cell_h = int((opts.canvas_height - (opts.margin * 2)) / opts.get_nrows())
     cell_size = (cell_w, cell_h)
 
     inner_w = int(cell_w - (opts.padding * 2))
@@ -1076,7 +1058,7 @@ def create_image(opts: MontageOptions, image_num: int):
     opts.log_say(f"Creating new image (canvas size = {opts.canvas_size()})")
     opts.log_add(f"cell_size={cell_size}")
 
-    image = Image.new('RGB', opts.canvas_size(), opts.background_rgb())
+    image = Image.new("RGB", opts.canvas_size(), opts.background_rgb())
 
     if opts.has_background_image():
         opts.log_say(f"Adding background image '{opts.get_bg_file_name()}'")
@@ -1103,16 +1085,13 @@ def create_image(opts: MontageOptions, image_num: int):
             #  These should match. Warn when they do not.
             opts.log_say(
                 "WARNING: bg_image.size={0} but canvas_size={1}.".format(
-                    bg_image.size,
-                    opts.canvas_size()
+                    bg_image.size, opts.canvas_size()
                 )
             )
 
         bg_image = bg_image.filter(ImageFilter.BoxBlur(opts.bg_blur))
 
-        bg_mask = Image.new(
-            'RGBA', bg_image.size, opts.background_mask_rgba()
-        )
+        bg_mask = Image.new("RGBA", bg_image.size, opts.background_mask_rgba())
 
         image.paste(bg_image, (0, 0), mask=bg_mask)
 
@@ -1123,8 +1102,8 @@ def create_image(opts: MontageOptions, image_num: int):
     for row in range(0, opts.get_nrows()):
         for col in range(0, opts.get_ncols()):
             if outside_feature(col, row, opts.feature1, opts.feature2):
-                x = (opts.margin + (col * cell_w) + opts.padding)
-                y = (opts.margin + (row * cell_h) + opts.padding)
+                x = opts.margin + (col * cell_w) + opts.padding
+                y = opts.margin + (row * cell_h) + opts.padding
                 opts.add_placement(x, y, inner_w, inner_h)
                 #  Placement is padded left, top, width, height.
 
@@ -1144,8 +1123,8 @@ def create_image(opts: MontageOptions, image_num: int):
 
             img = ImageOps.exif_transpose(img)
 
-            scale_w = (place.width / img.width)
-            scale_h = (place.height / img.height)
+            scale_w = place.width / img.width
+            scale_h = place.height / img.height
 
             precrop_w = None
             precrop_h = None

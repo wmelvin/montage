@@ -12,11 +12,14 @@ from pathlib import Path
 
 MAX_SHUFFLE_COUNT = 99
 
-app_version = '210909.1'
+app_version = '211002.1'
 
 pub_version = '1.0.dev1'
 
 app_title = f'montage.py - version {app_version}'
+
+# global confirm_errors
+confirm_errors = True
 
 
 FeatureImage = namedtuple(
@@ -31,18 +34,6 @@ class Placement:
         self.width = width
         self.height = height
         self.file_name = file_name
-
-    # def x(self):
-    #     return self.left
-
-    # def y(self):
-    #     return self.top
-
-    # def size(self):
-    #     return (self.width, self.height)
-
-    # def xy(self):
-    #     return (self.left, self.top)
 
 
 class MontageDefaults:
@@ -156,12 +147,15 @@ class MontageOptions:
         n_images = self.cols * self.rows
         self.images_list = [] + self.image_list_a
         if self.do_shuffle_images():
+            random.shuffle(self.images_list)
             if 0 < len(self.image_list_b):
                 self.images_list = self.images_list[:n_images - 1]
                 temp_list = [] + self.image_list_b
                 random.shuffle(temp_list)
                 self.images_list.append(temp_list[0])
-            random.shuffle(self.images_list)
+                random.shuffle(self.images_list)
+            else:
+                self.images_list = self.images_list[:n_images]
         else:
             self.images_list += self.image_list_b
             self.images_list = self.images_list[:n_images]
@@ -353,6 +347,8 @@ class MontageOptions:
             print("\nCANNOT PROCEED")
             for message in errors:
                 sys.stderr.write(f"{message}\n")
+            if confirm_errors:
+                input("Press [Enter]. ")
             sys.exit(1)
 
     def _load_from_file(self, file_name):
@@ -361,6 +357,8 @@ class MontageOptions:
             if not p.exists():
                 # sys.stderr.write(f"ERROR: File not found: {file_name}")
                 sys.stderr.write(f"ERROR: File not found: {p}")
+                if confirm_errors:
+                    input("Press [Enter]. ")
                 sys.exit(1)
 
             with open(p, 'r') as f:
@@ -503,6 +501,8 @@ class MontageOptions:
             sys.stderr.write(
                 "ERROR: No args object, and no settings file name.\n"
             )
+            if confirm_errors:
+                input("Press [Enter]. ")
             sys.exit(1)
 
         if settings_file is None:
@@ -591,6 +591,8 @@ def get_list_from_file(file_name):
     if not p.exists():
         # sys.stderr.write(f"ERROR: File not found: {file_name}")
         sys.stderr.write(f"ERROR: File not found: {p}")
+        if confirm_errors:
+            input("Press [Enter]. ")
         sys.exit(1)
 
     result = []
@@ -818,17 +820,25 @@ def get_arguments():
     )
 
     ap.add_argument(
-        '--write-opts',
-        dest='write_opts',
-        action='store_true',
-        help='Write the option settings to a file.'
-    )
-
-    ap.add_argument(
         '-z', '--zoom',
         dest='do_zoom',
         action='store_true',
         help='Zoom images to fill instead of fitting to frame.'
+    )
+
+    ap.add_argument(
+        '-q',
+        dest='do_quit',
+        action='store_true',
+        help='Quit immediately when there is an error. By default you are '
+        + 'asked to press Enter to acknowledge the error message.'
+    )
+
+    ap.add_argument(
+        '--write-opts',
+        dest='write_opts',
+        action='store_true',
+        help='Write the option settings to a file.'
     )
 
     # TODO: Add details to help messages.
@@ -1219,6 +1229,10 @@ def main():
     defaults = MontageDefaults()
 
     args = get_arguments()
+
+    if args.do_quit:
+        global confirm_errors
+        confirm_errors = False
 
     opts = MontageOptions()
 

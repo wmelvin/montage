@@ -12,7 +12,7 @@ from pathlib import Path
 
 MAX_SHUFFLE_COUNT = 99
 
-app_version = "211002.2"
+app_version = "211003.1"
 
 pub_version = "1.0.dev1"
 
@@ -369,9 +369,7 @@ class MontageOptions:
             print("\nCANNOT PROCEED")
             for message in errors:
                 sys.stderr.write(f"{message}\n")
-            if confirm_errors:
-                input("Press [Enter]. ")
-            sys.exit(1)
+            error_exit()
 
     def _load_from_file(self, file_name):
         if file_name is not None:
@@ -379,9 +377,9 @@ class MontageOptions:
             if not p.exists():
                 # sys.stderr.write(f"ERROR: File not found: {file_name}")
                 sys.stderr.write(f"ERROR: File not found: {p}")
-                if confirm_errors:
-                    input("Press [Enter]. ")
-                sys.exit(1)
+                error_exit()
+
+            print(f"Load settings from '{file_name}'.")
 
             with open(p, "r") as f:
                 file_text = f.readlines()
@@ -516,9 +514,7 @@ class MontageOptions:
             sys.stderr.write(
                 "ERROR: No args object, and no settings file name.\n"
             )
-            if confirm_errors:
-                input("Press [Enter]. ")
-            sys.exit(1)
+            error_exit()
 
         if settings_file is None:
             self._load_from_file(args.settings_file)
@@ -590,7 +586,9 @@ class MontageOptions:
             if args.feature_2 is not None:
                 self.feature2 = get_feature_args(args.feature_2)
 
-            self.image_list_a = [i for i in args.images] + self.image_list_a
+            self.image_list_a = [
+                i for i in args.images if 0 < len(i)
+            ] + self.image_list_a
 
         self.image_list_a = expand_image_list(self.image_list_a)
 
@@ -600,15 +598,24 @@ class MontageOptions:
 
         self._set_defaults(defaults)
 
+# ----------------------------------------------------------------------
+
+
+def error_exit():
+    print("*" * 70)
+    if confirm_errors:
+        input("ERRORS: Press [Enter] to acknowledge. ")
+    else:
+        print("Halted due to errors.")
+    sys.exit(1)
+
 
 def get_list_from_file(file_name):
     p = Path(file_name).expanduser().resolve()
     if not p.exists():
         # sys.stderr.write(f"ERROR: File not found: {file_name}")
         sys.stderr.write(f"ERROR: File not found: {p}")
-        if confirm_errors:
-            input("Press [Enter]. ")
-        sys.exit(1)
+        error_exit()
 
     result = []
 

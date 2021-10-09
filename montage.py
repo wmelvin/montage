@@ -12,6 +12,8 @@ from pathlib import Path
 
 MAX_SHUFFLE_COUNT = 99
 
+SKIP_MARKER = "(skip)"
+
 app_version = "211009.1"
 
 pub_version = "1.0.dev1"
@@ -337,7 +339,10 @@ class MontageOptions:
                     )
 
         if 0 < len(feat_attr.file_name):
-            if not Path(feat_attr.file_name).exists():
+            if not (
+                feat_attr.file_name == SKIP_MARKER
+                or Path(feat_attr.file_name).exists()
+            ):
                 errors.append(
                     "Feature-{0}: Image file not found: '{1}'.".format(
                         feat_num, feat_attr.file_name
@@ -359,7 +364,9 @@ class MontageOptions:
                 )
 
         for file_name in self.image_list_a:
-            if not Path(file_name).exists():
+            if not (
+                file_name.strip() == SKIP_MARKER or Path(file_name).exists()
+            ):
                 errors.append(f"Image file not found: '{file_name}'.")
 
         for file_name in self.image_list_b:
@@ -1185,6 +1192,10 @@ def create_image(opts: MontageOptions, image_num: int):
                 image_name = place.file_name
 
             assert 0 < len(image_name)
+
+            if image_name == SKIP_MARKER:
+                opts.log_say("Skip placement.")
+                continue
 
             opts.log_say(f"Placing image '{image_name}'")
 

@@ -12,7 +12,7 @@ from pathlib import Path
 
 MAX_SHUFFLE_COUNT = 99
 
-app_version = "211003.1"
+app_version = "211009.1"
 
 pub_version = "1.0.dev1"
 
@@ -42,8 +42,8 @@ class MontageDefaults:
         self.margin = 10
         self.padding = 10
         self.bg_blur = 3
-        self.ncols = 2
-        self.nrows = 2
+        self.ncols = [2]
+        self.nrows = [2]
         self.border_rgba = (0, 0, 0, 255)
         self.background_rgba = (255, 255, 255, 255)
 
@@ -106,14 +106,25 @@ class MontageOptions:
     def border_mask_rgba(self):
         return (0, 0, 0, self.border_rgba[3])
 
-    def get_shuffled(self, value, weighted_flag):
+    # def get_shuffled(self, value, weighted_flag):
+    #     if weighted_flag in self.shuffle_mode:
+    #         a = []
+    #         for v in range(1, value + 1):
+    #             for x in range(v * 2):
+    #                 a.append(v)
+    #     else:
+    #         a = [x for x in range(1, value + 1)]
+    #     random.shuffle(a)
+    #     return a[0]
+
+    def get_shuffled(self, values, weighted_flag):
         if weighted_flag in self.shuffle_mode:
             a = []
-            for v in range(1, value + 1):
-                for x in range(v * 2):
-                    a.append(v)
+            for i in range(0, len(values)):
+                for x in range((i + 1) * 2):
+                    a.append(values[i])
         else:
-            a = [x for x in range(1, value + 1)]
+            a = values
         random.shuffle(a)
         return a[0]
 
@@ -121,11 +132,11 @@ class MontageOptions:
         if "c" in self.shuffle_mode:
             self.cols = self.get_shuffled(self.init_ncols, "wc")
         else:
-            self.cols = self.init_ncols
+            self.cols = self.init_ncols[0]
         if "r" in self.shuffle_mode:
             self.rows = self.get_shuffled(self.init_nrows, "wr")
         else:
-            self.rows = self.init_nrows
+            self.rows = self.init_nrows[0]
 
     def get_ncols(self):
         if self.cols is None:
@@ -231,8 +242,8 @@ class MontageOptions:
             self.bg_rgba[0], self.bg_rgba[1], self.bg_rgba[2], self.bg_rgba[3]
         )
         s += f"background_blur={self.bg_blur}\n"
-        s += f"columns={self.init_ncols}\n"
-        s += f"rows={self.init_nrows}\n"
+        s += f"columns={int_list_str(self.init_ncols)}\n"
+        s += f"rows={int_list_str(self.init_nrows)}\n"
         s += f"margin={self.margin}\n"
         s += f"padding={self.padding}\n"
         s += f"border_width={self.border_width}\n"
@@ -396,9 +407,11 @@ class MontageOptions:
 
             self.canvas_height = get_opt_int(None, "canvas_height", settings)
 
-            self.init_ncols = get_opt_int(None, "columns", settings)
+            self.init_ncols = as_int_list(
+                get_opt_str(None, "columns", settings)
+            )
 
-            self.init_nrows = get_opt_int(None, "rows", settings)
+            self.init_nrows = as_int_list(get_opt_str(None, "rows", settings))
 
             self.margin = get_opt_int(None, "margin", settings)
 
@@ -445,7 +458,7 @@ class MontageOptions:
                 for i in get_option_entries("[background-images]", file_text)
             ]
 
-    def _set_defaults(self, defaults):
+    def _set_defaults(self, defaults: MontageDefaults):
         # -- Use defaults for options not already set.
 
         if self.output_file_name is None:
@@ -540,10 +553,10 @@ class MontageOptions:
                 self.canvas_height = args.canvas_height
 
             if args.cols is not None:
-                self.init_ncols = args.cols
+                self.init_ncols = as_int_list(args.cols)
 
             if args.rows is not None:
-                self.init_nrows = args.rows
+                self.init_nrows = as_int_list(args.rows)
 
             if args.margin is not None:
                 self.margin = args.margin
@@ -598,13 +611,14 @@ class MontageOptions:
 
         self._set_defaults(defaults)
 
+
 # ----------------------------------------------------------------------
 
 
 def error_exit():
     print("*" * 70)
     if confirm_errors:
-        input("ERRORS: Press [Enter] to acknowledge. ")
+        input("ERRORS: Press [Enter]. ")
     else:
         print("Halted due to errors.")
     sys.exit(1)
@@ -966,6 +980,20 @@ def get_opt_feat(section_content, default_to_none):
         return None
     else:
         return FeatureImage(col, ncols, row, nrows, file_name)
+
+
+def as_int_list(text, default=None):
+    if (text is None) or (len(text) == 0):
+        return default
+    else:
+        a = [
+            int(x) for x in [t.strip() for t in text.split(",")] if 0 < len(x)
+        ]
+        return a
+
+
+def int_list_str(int_list):
+    return ",".join([str(x) for x in int_list])
 
 
 def qs(s: str) -> str:

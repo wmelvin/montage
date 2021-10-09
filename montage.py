@@ -108,18 +108,7 @@ class MontageOptions:
     def border_mask_rgba(self):
         return (0, 0, 0, self.border_rgba[3])
 
-    # def get_shuffled(self, value, weighted_flag):
-    #     if weighted_flag in self.shuffle_mode:
-    #         a = []
-    #         for v in range(1, value + 1):
-    #             for x in range(v * 2):
-    #                 a.append(v)
-    #     else:
-    #         a = [x for x in range(1, value + 1)]
-    #     random.shuffle(a)
-    #     return a[0]
-
-    def get_shuffled(self, values, weighted_flag):
+    def shuffled_col_row(self, values: List[int], weighted_flag: str):
         if weighted_flag in self.shuffle_mode:
             a = []
             for i in range(0, len(values)):
@@ -130,13 +119,13 @@ class MontageOptions:
         random.shuffle(a)
         return a[0]
 
-    def set_cols_rows(self):
+    def set_cols_rows(self) -> int:
         if "c" in self.shuffle_mode:
-            self.cols = self.get_shuffled(self.init_ncols, "wc")
+            self.cols = self.shuffled_col_row(self.init_ncols, "wc")
         else:
             self.cols = self.init_ncols[0]
         if "r" in self.shuffle_mode:
-            self.rows = self.get_shuffled(self.init_nrows, "wr")
+            self.rows = self.shuffled_col_row(self.init_nrows, "wr")
         else:
             self.rows = self.init_nrows[0]
 

@@ -74,15 +74,61 @@ class MontageOptions:
         self.border_width = None
         self.border_rgba = None
         self.do_zoom = None
-        self.image_list_a = []
-        self.image_list_b = []
-        self.images_list = []
-        self.bg_image_list = []
+
+        # self.image_list_a = []
+        # self.image_list_b = []
+        # self.images_list = []
+        # self.bg_image_list = []
+
+        self.pool_index = -1
+        self.pool_wrapped = False        
+        self.bg_index = -1
+        self.im1_index = -1
+
+        self.init_images = []
+        #  List of image file names, as loaded from the [images] section,
+        #  and/or positional args.
+
+        self.init_images1 = []
+        #  List of image file names, as loaded from the [images-1] section.
+
+        self.init_bg_images = []
+        #  List of image file names, as loaded from the [background-images]
+        #  section.
+
+        self.images_pool = []
+        #  Shuffled, depending on option, list to pull from.
+
+        self.current_images = []
+        #  List of images selected for the current montage.
+
         self._placements = []
+        #  List of images to be placed in the current montage.
+
         self._log = []
 
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
+
+    def get_pool_index(self):
+        first_use = self.pool_index == -1
+        self.pool_index += 1
+        if len(self.images_pool) <= self.pool_index:
+            self.pool_index = 0
+            self.pool_wrapped = not first_use
+        return self.pool_index
+
+    def get_im1_index(self):
+        self.im1_index += 1
+        if len(self.init_images1) <= self.im1_index:
+            self.im1_index = 0
+        return self.im1_index
+
+    def get_bg_index(self):
+        self.bg_index += 1
+        if self.bg_index == len(self.init_bg_images):
+            self.bg_index = 0
+        return self.bg_index
 
     def add_placement(self, x, y, w, h, file_name=""):
         self._placements.append(Placement(x, y, w, h, file_name))
@@ -352,17 +398,20 @@ class MontageOptions:
                     f"Output folder not a directory: '{self.output_dir}'."
                 )
 
-        for file_name in self.image_list_a:
+        # for file_name in self.image_list_a:
+        for file_name in self.init_images:
             if not (
                 file_name.strip() == SKIP_MARKER or Path(file_name).exists()
             ):
                 errors.append(f"Image file not found: '{file_name}'.")
 
-        for file_name in self.image_list_b:
+        # for file_name in self.image_list_b:
+        for file_name in self.init_images1:
             if not Path(file_name).exists():
                 errors.append(f"Image file not found: '{file_name}'.")
 
-        for file_name in self.bg_image_list:
+        # for file_name in self.bg_image_list:
+        for file_name in self.init_bg_images:
             if not Path(file_name).exists():
                 errors.append(
                     f"Background image file not found: '{file_name}'."
@@ -439,17 +488,32 @@ class MontageOptions:
                 get_option_entries("[feature-2]", file_text), True
             )
 
-            self.image_list_a += [
+            # self.image_list_a += [
+            #     i.strip("'\"")
+            #     for i in get_option_entries("[images]", file_text)
+            # ]
+
+            # self.image_list_b += [
+            #     i.strip("'\"")
+            #     for i in get_option_entries("[images-1]", file_text)
+            # ]
+
+            # self.bg_image_list += [
+            #     i.strip("'\"")
+            #     for i in get_option_entries("[background-images]", file_text)
+            # ]
+
+            self.init_images += [
                 i.strip("'\"")
                 for i in get_option_entries("[images]", file_text)
             ]
 
-            self.image_list_b += [
+            self.init_images1 += [
                 i.strip("'\"")
                 for i in get_option_entries("[images-1]", file_text)
             ]
 
-            self.bg_image_list += [
+            self.init_bg_images += [
                 i.strip("'\"")
                 for i in get_option_entries("[background-images]", file_text)
             ]
@@ -595,15 +659,22 @@ class MontageOptions:
             if args.feature_2 is not None:
                 self.feature2 = get_feature_args(args.feature_2)
 
-            self.image_list_a = [
+            # self.image_list_a = [
+            #     i for i in args.images if 0 < len(i)
+            # ] + self.image_list_a
+
+            self.init_images = [
                 i for i in args.images if 0 < len(i)
-            ] + self.image_list_a
+            ] + self.init_images
 
-        self.image_list_a = expand_image_list(self.image_list_a)
+        # self.image_list_a = expand_image_list(self.image_list_a)
+        self.init_images = expand_image_list(self.init_images)
 
-        self.image_list_b = expand_image_list(self.image_list_b)
+        # self.image_list_b = expand_image_list(self.image_list_b)
+        self.init_images1 = expand_image_list(self.init_images1)
 
-        self.bg_image_list = expand_image_list(self.bg_image_list)
+        # self.bg_image_list = expand_image_list(self.bg_image_list)
+        self.init_bg_images = expand_image_list(self.init_bg_images)
 
         self._set_defaults(defaults)
 

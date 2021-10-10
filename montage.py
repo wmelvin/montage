@@ -81,7 +81,7 @@ class MontageOptions:
         # self.bg_image_list = []
 
         self.pool_index = -1
-        self.pool_wrapped = False        
+        self.pool_wrapped = False
         self.bg_index = -1
         self.im1_index = -1
 
@@ -125,9 +125,15 @@ class MontageOptions:
         return self.im1_index
 
     def get_bg_index(self):
-        self.bg_index += 1
-        if self.bg_index == len(self.init_bg_images):
-            self.bg_index = 0
+        n = len(self.init_bg_images)
+        if n == 0:
+            self.bg_index = -1
+        elif self.do_shuffle_bg_images:
+            self.bg_index = random.shuffle([x for x in range(n)])
+        else:
+            self.bg_index += 1
+            if self.bg_index == len(self.init_bg_images):
+                self.bg_index = 0
         return self.bg_index
 
     def add_placement(self, x, y, w, h, file_name=""):
@@ -137,10 +143,16 @@ class MontageOptions:
         return self._placements
 
     def has_background_image(self):
-        return 0 < len(self.bg_image_list)
+        # return 0 < len(self.bg_image_list)
+        return 0 < len(self.init_bg_images)
 
     def get_bg_file_name(self):
-        return self.bg_image_list[0]
+        # return self.bg_image_list[0]
+        i = self.get_bg_index()
+        if 0 <= i:
+            return self.init_bg_images[i]
+        else:
+            return None
 
     def background_rgb(self):
         return self.bg_rgba[:3]
@@ -185,34 +197,63 @@ class MontageOptions:
             self.set_cols_rows()
         return self.rows
 
+    def _feature_cell_count(self):
+        n = (self.feature1.ncols * self.feature1.nrows)
+        n += (self.feature2.ncols * self.feature2.nrows)
+        return n
+
+    def _current_image_count(self):
+        n = self.get_ncols * self.get_nrows
+        n -= self._feature_cell_count
+        return n
+
+    def _load_current_images(self):
+        self.current_images.clear()
+        n_images = self._current_image_count()
+        if 0 < len(self.init_images1):
+            n_images -= 1
+        assert 0 < n_images
+        no_wrap = "n" in self.shuffle_mode
+        while (len(self.current_images) < n_images):
+            i = self.get_pool_index()
+            if self.pool_wrapped and no_wrap:
+                break
+            self.current_images.append(self.images_pool[i])
+        if 0 < len(self.init_images1):
+            self.current_images.append(
+                self.init_images1[self.get_im1_index()]
+            )
+        if self.do_shuffle_images:
+            random.shuffle(self.current_images)
+
     def do_shuffle_images(self):
         return "i" in self.shuffle_mode
 
-    def shuffle_images(self):
-        n_images = self.cols * self.rows
-        self.images_list = [] + self.image_list_a
-        if self.do_shuffle_images():
-            random.shuffle(self.images_list)
-            if 0 < len(self.image_list_b):
-                self.images_list = self.images_list[: n_images - 1]
-                temp_list = [] + self.image_list_b
-                random.shuffle(temp_list)
-                self.images_list.append(temp_list[0])
-                random.shuffle(self.images_list)
-            else:
-                self.images_list = self.images_list[:n_images]
-        else:
-            self.images_list += self.image_list_b
-            self.images_list = self.images_list[:n_images]
+    # def shuffle_images(self):
+    #     n_images = self.cols * self.rows
+    #     self.images_list = [] + self.image_list_a
+    #     if self.do_shuffle_images():
+    #         random.shuffle(self.images_list)
+    #         if 0 < len(self.image_list_b):
+    #             self.images_list = self.images_list[: n_images - 1]
+    #             temp_list = [] + self.image_list_b
+    #             random.shuffle(temp_list)
+    #             self.images_list.append(temp_list[0])
+    #             random.shuffle(self.images_list)
+    #         else:
+    #             self.images_list = self.images_list[:n_images]
+    #     else:
+    #         self.images_list += self.image_list_b
+    #         self.images_list = self.images_list[:n_images]
 
     def do_shuffle_bg_images(self):
         return "b" in self.shuffle_mode
 
-    def shuffle_bg_images(self):
-        if self.do_shuffle_bg_images():
-            random.shuffle(self.bg_image_list)
+    # def shuffle_bg_images(self):
+    #     if self.do_shuffle_bg_images():
+    #         random.shuffle(self.bg_image_list)
 
-    def get_image_count(self):
+    def get_montage_count(self):
         if len(self.shuffle_mode) == 0:
             return 1
         else:
@@ -229,8 +270,15 @@ class MontageOptions:
         self._placements.clear()
         self._log.clear()
         self.set_cols_rows()
-        self.shuffle_bg_images()
-        self.shuffle_images()
+
+        if len(self.images_pool) == 0:
+            self.images_pool = [] + self.init_images
+            if self.do_shuffle_images():
+                random.shuffle(self.images_pool)
+        elif self.pool_wrapped and self.do_shuffle_images():
+            random.shuffle(self.images_pool)
+
+        # self.shuffle_bg_images()
 
     def _timestamp_str(self):
         if 2 < self.stamp_mode:
@@ -311,7 +359,8 @@ class MontageOptions:
         s += f"num_rows={self.feature2.nrows}\n"
 
         s += "\n[background-images]\n"
-        for i in self.bg_image_list:
+        # for i in self.bg_image_list:
+        for i in self.init_bg_images:
             s += f"{qs(i)}\n"
 
         s += "\n[images]\n"
@@ -678,6 +727,8 @@ class MontageOptions:
 
         self._set_defaults(defaults)
 
+        self.shuffle_mode = self.shuffle_mode.lower()
+
 
 # ----------------------------------------------------------------------
 
@@ -898,6 +949,8 @@ def get_arguments():
                 wc = weighted columns
                 wr = weighted rows
                 (weighted favors larger numbers)
+                n = do not start over at beginning of list 
+                    when all images have been used.
             Example: --shuffle-mode=ibwc
         """
         ),
@@ -1336,7 +1389,7 @@ def create_image(opts: MontageOptions, image_num: int):
 
 def create_montage(opts: MontageOptions):
     opts.check_options()
-    n_images = opts.get_image_count()
+    n_images = opts.get_montage_count()
     for i in range(0, n_images):
         opts.prepare()
         create_image(opts, i + 1)

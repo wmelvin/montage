@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 99
 
 SKIP_MARKER = "(skip)"
 
-app_version = "211009.1"
+app_version = "211010.1"
 
 pub_version = "1.0.dev1"
 
@@ -129,7 +129,7 @@ class MontageOptions:
         if n == 0:
             self.bg_index = -1
         elif self.do_shuffle_bg_images:
-            self.bg_index = random.shuffle([x for x in range(n)])
+            self.bg_index = random.randrange(n)
         else:
             self.bg_index += 1
             if self.bg_index == len(self.init_bg_images):
@@ -198,13 +198,13 @@ class MontageOptions:
         return self.rows
 
     def _feature_cell_count(self):
-        n = (self.feature1.ncols * self.feature1.nrows)
-        n += (self.feature2.ncols * self.feature2.nrows)
+        n = self.feature1.ncols * self.feature1.nrows
+        n += self.feature2.ncols * self.feature2.nrows
         return n
 
     def _current_image_count(self):
-        n = self.get_ncols * self.get_nrows
-        n -= self._feature_cell_count
+        n = self.get_ncols() * self.get_nrows()
+        n -= self._feature_cell_count()
         return n
 
     def _load_current_images(self):
@@ -214,15 +214,13 @@ class MontageOptions:
             n_images -= 1
         assert 0 < n_images
         no_wrap = "n" in self.shuffle_mode
-        while (len(self.current_images) < n_images):
+        while len(self.current_images) < n_images:
             i = self.get_pool_index()
             if self.pool_wrapped and no_wrap:
                 break
             self.current_images.append(self.images_pool[i])
         if 0 < len(self.init_images1):
-            self.current_images.append(
-                self.init_images1[self.get_im1_index()]
-            )
+            self.current_images.append(self.init_images1[self.get_im1_index()])
         if self.do_shuffle_images:
             random.shuffle(self.current_images)
 
@@ -270,15 +268,13 @@ class MontageOptions:
         self._placements.clear()
         self._log.clear()
         self.set_cols_rows()
-
-        if len(self.images_pool) == 0:
+        if len(self.images_pool) == 0:  # First run.
             self.images_pool = [] + self.init_images
             if self.do_shuffle_images():
                 random.shuffle(self.images_pool)
         elif self.pool_wrapped and self.do_shuffle_images():
             random.shuffle(self.images_pool)
-
-        # self.shuffle_bg_images()
+        self._load_current_images()
 
     def _timestamp_str(self):
         if 2 < self.stamp_mode:
@@ -364,11 +360,13 @@ class MontageOptions:
             s += f"{qs(i)}\n"
 
         s += "\n[images]\n"
-        for i in self.image_list_a:
+        # for i in self.image_list_a:
+        for i in self.init_images:
             s += f"{qs(i)}\n"
 
         s += "\n[images-1]\n"
-        for i in self.image_list_b:
+        # for i in self.image_list_b:
+        for i in self.init_images1:
             s += f"{qs(i)}\n"
 
         return s
@@ -393,8 +391,9 @@ class MontageOptions:
 
                 f.write(self._options_as_str())
 
-                f.write("\n\n[LOG: IMAGES-LIST]\n")
-                for i in self.images_list:
+                f.write("\n\n[LOG: CURRENT-IMAGES]\n")
+                # for i in self.images_list:
+                for i in self.current_images:
                     f.write(f"{qs(i)}\n")
 
                 if 0 < len(self._log):
@@ -1296,10 +1295,10 @@ def create_image(opts: MontageOptions, image_num: int):
 
     i = 0
     for place in opts.get_placements_list():
-        if i < len(opts.images_list):
+        if i < len(opts.current_images):
 
             if len(place.file_name) == 0:
-                image_name = opts.images_list[i]
+                image_name = opts.current_images[i]
                 i += 1
             else:
                 image_name = place.file_name

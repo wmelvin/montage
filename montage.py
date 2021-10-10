@@ -92,7 +92,7 @@ class MontageOptions:
         #  Initial list of image file names, as loaded from the
         #  [background-images] section.
 
-        self.images_pool = []
+        self.image_pool = []
         #  List to pull from when filling current_images. Loaded
         #  from init_images and shuffled, depending on option.
 
@@ -110,7 +110,7 @@ class MontageOptions:
     def get_pool_index(self):
         first_use = self.pool_index == -1
         self.pool_index += 1
-        if len(self.images_pool) <= self.pool_index:
+        if len(self.image_pool) <= self.pool_index:
             self.pool_index = 0
             self.pool_wrapped = not first_use
         return self.pool_index
@@ -213,7 +213,7 @@ class MontageOptions:
             i = self.get_pool_index()
             if self.pool_wrapped and no_wrap:
                 break
-            self.current_images.append(self.images_pool[i])
+            self.current_images.append(self.image_pool[i])
         if 0 < len(self.init_images1):
             self.current_images.append(self.init_images1[self.get_im1_index()])
         if self.do_shuffle_images():
@@ -242,12 +242,12 @@ class MontageOptions:
         self._placements.clear()
         self._log.clear()
         self.set_cols_rows()
-        if len(self.images_pool) == 0:  # First run.
-            self.images_pool = [] + self.init_images
+        if len(self.image_pool) == 0:  # First run.
+            self.image_pool = [] + self.init_images
             if self.do_shuffle_images():
-                random.shuffle(self.images_pool)
+                random.shuffle(self.image_pool)
         elif self.pool_wrapped and self.do_shuffle_images():
-            random.shuffle(self.images_pool)
+            random.shuffle(self.image_pool)
         self._load_current_images()
         self.pool_wrapped = False
 

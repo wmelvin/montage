@@ -75,29 +75,26 @@ class MontageOptions:
         self.border_rgba = None
         self.do_zoom = None
 
-        # self.image_list_a = []
-        # self.image_list_b = []
-        # self.images_list = []
-        # self.bg_image_list = []
-
         self.pool_index = -1
         self.pool_wrapped = False
         self.bg_index = -1
         self.im1_index = -1
 
         self.init_images = []
-        #  List of image file names, as loaded from the [images] section,
-        #  and/or positional args.
+        #  Initial list of image file names, as loaded from the
+        #  [images] section and/or positional args.
 
         self.init_images1 = []
-        #  List of image file names, as loaded from the [images-1] section.
+        #  Initial list of image file names, as loaded from the
+        #  [images-1] section.
 
         self.init_bg_images = []
-        #  List of image file names, as loaded from the [background-images]
-        #  section.
+        #  Initial list of image file names, as loaded from the
+        #  [background-images] section.
 
         self.images_pool = []
-        #  Shuffled, depending on option, list to pull from.
+        #  List to pull from when filling current_images. Loaded
+        #  from init_images and shuffled, depending on option.
 
         self.current_images = []
         #  List of images selected for the current montage.
@@ -128,7 +125,7 @@ class MontageOptions:
         n = len(self.init_bg_images)
         if n == 0:
             self.bg_index = -1
-        elif self.do_shuffle_bg_images:
+        elif self.do_shuffle_bg_images():
             self.bg_index = random.randrange(n)
         else:
             self.bg_index += 1
@@ -143,11 +140,9 @@ class MontageOptions:
         return self._placements
 
     def has_background_image(self):
-        # return 0 < len(self.bg_image_list)
         return 0 < len(self.init_bg_images)
 
     def get_bg_file_name(self):
-        # return self.bg_image_list[0]
         i = self.get_bg_index()
         if 0 <= i:
             return self.init_bg_images[i]
@@ -169,7 +164,7 @@ class MontageOptions:
     def shuffled_col_row(self, values: List[int], weighted_flag: str):
         if weighted_flag in self.shuffle_mode:
             a = []
-            for i in range(0, len(values)):
+            for i in range(len(values)):
                 for x in range((i + 1) * 2):
                     a.append(values[i])
         else:
@@ -221,35 +216,14 @@ class MontageOptions:
             self.current_images.append(self.images_pool[i])
         if 0 < len(self.init_images1):
             self.current_images.append(self.init_images1[self.get_im1_index()])
-        if self.do_shuffle_images:
+        if self.do_shuffle_images():
             random.shuffle(self.current_images)
 
     def do_shuffle_images(self):
         return "i" in self.shuffle_mode
 
-    # def shuffle_images(self):
-    #     n_images = self.cols * self.rows
-    #     self.images_list = [] + self.image_list_a
-    #     if self.do_shuffle_images():
-    #         random.shuffle(self.images_list)
-    #         if 0 < len(self.image_list_b):
-    #             self.images_list = self.images_list[: n_images - 1]
-    #             temp_list = [] + self.image_list_b
-    #             random.shuffle(temp_list)
-    #             self.images_list.append(temp_list[0])
-    #             random.shuffle(self.images_list)
-    #         else:
-    #             self.images_list = self.images_list[:n_images]
-    #     else:
-    #         self.images_list += self.image_list_b
-    #         self.images_list = self.images_list[:n_images]
-
     def do_shuffle_bg_images(self):
         return "b" in self.shuffle_mode
-
-    # def shuffle_bg_images(self):
-    #     if self.do_shuffle_bg_images():
-    #         random.shuffle(self.bg_image_list)
 
     def get_montage_count(self):
         if len(self.shuffle_mode) == 0:
@@ -355,17 +329,14 @@ class MontageOptions:
         s += f"num_rows={self.feature2.nrows}\n"
 
         s += "\n[background-images]\n"
-        # for i in self.bg_image_list:
         for i in self.init_bg_images:
             s += f"{qs(i)}\n"
 
         s += "\n[images]\n"
-        # for i in self.image_list_a:
         for i in self.init_images:
             s += f"{qs(i)}\n"
 
         s += "\n[images-1]\n"
-        # for i in self.image_list_b:
         for i in self.init_images1:
             s += f"{qs(i)}\n"
 
@@ -392,7 +363,6 @@ class MontageOptions:
                 f.write(self._options_as_str())
 
                 f.write("\n\n[LOG: CURRENT-IMAGES]\n")
-                # for i in self.images_list:
                 for i in self.current_images:
                     f.write(f"{qs(i)}\n")
 
@@ -446,19 +416,16 @@ class MontageOptions:
                     f"Output folder not a directory: '{self.output_dir}'."
                 )
 
-        # for file_name in self.image_list_a:
         for file_name in self.init_images:
             if not (
                 file_name.strip() == SKIP_MARKER or Path(file_name).exists()
             ):
                 errors.append(f"Image file not found: '{file_name}'.")
 
-        # for file_name in self.image_list_b:
         for file_name in self.init_images1:
             if not Path(file_name).exists():
                 errors.append(f"Image file not found: '{file_name}'.")
 
-        # for file_name in self.bg_image_list:
         for file_name in self.init_bg_images:
             if not Path(file_name).exists():
                 errors.append(
@@ -479,7 +446,6 @@ class MontageOptions:
         if file_name is not None:
             p = Path(file_name).expanduser().resolve()
             if not p.exists():
-                # sys.stderr.write(f"ERROR: File not found: {file_name}")
                 sys.stderr.write(f"ERROR: File not found: {p}")
                 error_exit()
 
@@ -535,21 +501,6 @@ class MontageOptions:
             self.feature2 = get_opt_feat(
                 get_option_entries("[feature-2]", file_text), True
             )
-
-            # self.image_list_a += [
-            #     i.strip("'\"")
-            #     for i in get_option_entries("[images]", file_text)
-            # ]
-
-            # self.image_list_b += [
-            #     i.strip("'\"")
-            #     for i in get_option_entries("[images-1]", file_text)
-            # ]
-
-            # self.bg_image_list += [
-            #     i.strip("'\"")
-            #     for i in get_option_entries("[background-images]", file_text)
-            # ]
 
             self.init_images += [
                 i.strip("'\"")
@@ -707,21 +658,14 @@ class MontageOptions:
             if args.feature_2 is not None:
                 self.feature2 = get_feature_args(args.feature_2)
 
-            # self.image_list_a = [
-            #     i for i in args.images if 0 < len(i)
-            # ] + self.image_list_a
-
             self.init_images = [
                 i for i in args.images if 0 < len(i)
             ] + self.init_images
 
-        # self.image_list_a = expand_image_list(self.image_list_a)
         self.init_images = expand_image_list(self.init_images)
 
-        # self.image_list_b = expand_image_list(self.image_list_b)
         self.init_images1 = expand_image_list(self.init_images1)
 
-        # self.bg_image_list = expand_image_list(self.bg_image_list)
         self.init_bg_images = expand_image_list(self.init_bg_images)
 
         self._set_defaults(defaults)
@@ -744,7 +688,6 @@ def error_exit():
 def get_list_from_file(file_name):
     p = Path(file_name).expanduser().resolve()
     if not p.exists():
-        # sys.stderr.write(f"ERROR: File not found: {file_name}")
         sys.stderr.write(f"ERROR: File not found: {p}")
         error_exit()
 
@@ -948,7 +891,7 @@ def get_arguments():
                 wc = weighted columns
                 wr = weighted rows
                 (weighted favors larger numbers)
-                n = do not start over at beginning of list 
+                n = do not start over at beginning of list
                     when all images have been used.
             Example: --shuffle-mode=ibwc
         """
@@ -1023,7 +966,7 @@ def get_option_entries(opt_section, opt_content):
         s = line.strip()
         if (0 < len(s)) and not s.startswith("#"):
             if in_section:
-                # New section?
+                #  New section?
                 if s.startswith("["):
                     in_section = False
                 else:

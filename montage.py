@@ -168,7 +168,7 @@ class MontageOptions:
                 for x in range((i + 1) * 2):
                     a.append(values[i])
         else:
-            a = values
+            a = [] + values
         random.shuffle(a)
         return a[0]
 
@@ -249,6 +249,7 @@ class MontageOptions:
         elif self.pool_wrapped and self.do_shuffle_images():
             random.shuffle(self.images_pool)
         self._load_current_images()
+        self.pool_wrapped = False
 
     def _timestamp_str(self):
         if 2 < self.stamp_mode:
@@ -1177,14 +1178,22 @@ def add_border(image, border_size, border_xy, opts):
 
 
 def create_image(opts: MontageOptions, image_num: int):
-    cell_w = int((opts.canvas_width - (opts.margin * 2)) / opts.get_ncols())
-    cell_h = int((opts.canvas_height - (opts.margin * 2)) / opts.get_nrows())
+    ncols = opts.get_ncols()
+    nrows = opts.get_nrows()
+    cell_w = int((opts.canvas_width - (opts.margin * 2)) / ncols)
+    cell_h = int((opts.canvas_height - (opts.margin * 2)) / nrows)
     cell_size = (cell_w, cell_h)
 
     inner_w = int(cell_w - (opts.padding * 2))
     inner_h = int(cell_h - (opts.padding * 2))
 
-    opts.log_say(f"Creating new image (canvas size = {opts.canvas_size()})")
+    opts.log_say(
+        "Creating new image (canvas size = {0} x {1} pixels).".format(
+            opts.canvas_width, opts.canvas_height
+        )
+    )
+    opts.log_add(f"ncols={ncols}")
+    opts.log_add(f"nrows={nrows}")
     opts.log_add(f"cell_size={cell_size}")
 
     image = Image.new("RGB", opts.canvas_size(), opts.background_rgb())
@@ -1228,8 +1237,8 @@ def create_image(opts: MontageOptions, image_num: int):
 
     place_feature(opts, opts.feature2, cell_size)
 
-    for row in range(0, opts.get_nrows()):
-        for col in range(0, opts.get_ncols()):
+    for row in range(nrows):
+        for col in range(ncols):
             if outside_feature(col, row, opts.feature1, opts.feature2):
                 x = opts.margin + (col * cell_w) + opts.padding
                 y = opts.margin + (row * cell_h) + opts.padding

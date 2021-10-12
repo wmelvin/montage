@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 99
 
 SKIP_MARKER = "(skip)"
 
-app_version = "211010.1"
+app_version = "211012.1"
 
 pub_version = "1.0.dev1"
 
@@ -205,17 +205,22 @@ class MontageOptions:
     def _load_current_images(self):
         self.current_images.clear()
         n_images = self._current_image_count()
+
         if 0 < len(self.init_images1):
             n_images -= 1
-        assert 0 < n_images
+
         no_wrap = "n" in self.shuffle_mode
-        while len(self.current_images) < n_images:
-            i = self.get_pool_index()
-            if self.pool_wrapped and no_wrap:
-                break
-            self.current_images.append(self.image_pool[i])
+
+        if 0 < len(self.image_pool):
+            while len(self.current_images) < n_images:
+                ix = self.get_pool_index()
+                if self.pool_wrapped and no_wrap:
+                    break
+                self.current_images.append(self.image_pool[ix])
+
         if 0 < len(self.init_images1):
             self.current_images.append(self.init_images1[self.get_im1_index()])
+
         if self.do_shuffle_images():
             random.shuffle(self.current_images)
 

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List
 
 
-app_version = "210923.1"
+app_version = "211014.1"
 
 app_name = "montool_missing"
 
@@ -85,7 +85,8 @@ class ImageListItem:
 
 
 class ImageList:
-    def __init__(self, output_dir: str, log: Lawg):
+    def __init__(self, from_file: str, output_dir: str, log: Lawg):
+        self.from_file = from_file
         self.output_dir = output_dir
         self.log = log
         self.items: List[ImageListItem] = []
@@ -184,13 +185,28 @@ class ImageList:
             if item.list_name == tag:
                 has_tag = True
                 if item.original_exists:
-                    s += f"{item.original_path}\n"
+                    s += f"{item.original_path}"
                 elif 0 < len(item.new_path):
                     s += f"# OLD: {item.original_path}\n"
                     s += f"{item.new_path}\n"
                 else:
                     s += f"# NOT FOUND: {item.original_path}\n"
                 s += "\n"
+        if has_tag:
+            return s
+        else:
+            return ""
+
+    def _get_section_bare(self, tag: str) -> List[str]:
+        s = f"\n[{tag}]\n"
+        has_tag = False
+        for item in self.items:
+            if item.list_name == tag:
+                has_tag = True
+                if item.original_exists:
+                    s += f"{item.original_path}\n"
+                elif 0 < len(item.new_path):
+                    s += f"{item.new_path}\n"
         if has_tag:
             return s
         else:
@@ -205,16 +221,36 @@ class ImageList:
             t += f"# {x}\n"
         return t
 
-    def write_output_txt(self):
-        file_name = f"{app_name}_{run_dt}_OUTPUT.txt"
+    def write_output_a(self):
+        #  Annotated output.  Includes comment lines when original files were
+        #  found in a new location or not found at all.  Also includes
+        #  commented-out Feature-n sections.  This output should be reviewed
+        #  first to see if there are image files that could not be found in
+        #  a new location.
+        file_name = f"{app_name}_{run_dt}_OUTPUT_A.txt"
         file_name = Path(self.output_dir).joinpath(file_name)
         self.log.say(f"Writing '{file_name}'")
         with open(file_name, "w") as f:
+            f.write(f"# From file '{self.from_file}':\n\n")
             f.write(self._get_commented("feature-1"))
             f.write(self._get_commented("feature-2"))
             f.write(self._get_section("background-images"))
             f.write(self._get_section("images"))
             f.write(self._get_section("images-1"))
+
+    def write_output_b(self):
+        #  Bare output.  Only includes image list sections where original
+        #  files were found in the same or a new location.  This output
+        #  is useful for making a copy-and-paste update to the original
+        #  settings file.
+        file_name = f"{app_name}_{run_dt}_OUTPUT_B.txt"
+        file_name = Path(self.output_dir).joinpath(file_name)
+        self.log.say(f"Writing '{file_name}'")
+        with open(file_name, "w") as f:
+            f.write(f"# From file '{self.from_file}':\n\n")
+            f.write(self._get_section_bare("background-images"))
+            f.write(self._get_section_bare("images"))
+            f.write(self._get_section_bare("images-1"))
 
 
 def get_args():
@@ -313,7 +349,7 @@ def main():
     with open(opt_path, "r") as f:
         file_text = f.readlines()
 
-    image_list = ImageList(output_dir, log)
+    image_list = ImageList(args.opt_file, output_dir, log)
 
     section_text = get_option_entries("[feature-1]", file_text)
     if 0 < len(section_text):
@@ -350,7 +386,9 @@ def main():
 
     image_list.write_items_txt("2-after")
 
-    image_list.write_output_txt()
+    image_list.write_output_a()
+
+    image_list.write_output_b()
 
     log.write_out()
 

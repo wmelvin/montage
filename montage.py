@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 99
 
 SKIP_MARKER = "(skip)"
 
-app_version = "211012.1"
+app_version = "211026.1"
 
 pub_version = "1.0.dev1"
 
@@ -791,7 +791,7 @@ def get_arguments():
         "-c",
         "--columns",
         dest="cols",
-        type=int,
+        type=str,
         action="store",
         help="Number of columns.",
     )
@@ -800,7 +800,7 @@ def get_arguments():
         "-r",
         "--rows",
         dest="rows",
-        type=int,
+        type=str,
         action="store",
         help="Number of rows.",
     )
@@ -1050,7 +1050,12 @@ def get_opt_feat(section_content, default_to_none):
         return FeatureImage(col, ncols, row, nrows, file_name)
 
 
-def as_int_list(text, default=None):
+def as_int_list(text: str, default=None):
+    """
+    Takes a string representing a list of one or more integer values,
+    separated by commas, and returns a list of integers. If the input
+    is None, or an empty string, a default value (or None) is returned.
+    """
     if (text is None) or (len(text) == 0):
         return default
     else:

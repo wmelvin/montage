@@ -10,11 +10,11 @@ from typing import List
 from PIL import Image, ImageFilter, ImageOps
 from pathlib import Path
 
-MAX_SHUFFLE_COUNT = 99
+MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "211026.1"
+app_version = "211107.1"
 
 pub_version = "1.0.dev1"
 
@@ -275,8 +275,10 @@ class MontageOptions:
         p = Path(self.output_file_name)
 
         if 1 < self.shuffle_count:
+            #  Note: The zero-padded length in the format for image_num should
+            #  match the length of the value in MAX_SHUFFLE_COUNT.
             p = Path(
-                "{0}-{1:02d}".format(p.with_suffix(""), image_num)
+                "{0}-{1:03d}".format(p.with_suffix(""), image_num)
             ).with_suffix(p.suffix)
 
         if self.stamp_mode in [1, 3]:

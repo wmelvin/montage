@@ -7,7 +7,7 @@ import textwrap
 from collections import namedtuple
 from datetime import datetime
 from typing import List
-from PIL import Image, ImageFilter, ImageOps
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 from pathlib import Path
 
 MAX_SHUFFLE_COUNT = 999
@@ -74,6 +74,8 @@ class MontageOptions:
         self.border_width = None
         self.border_rgba = None
         self.do_zoom = None
+        self.label_font = None
+        self.label_size = None
 
         self.pool_index = -1
         self.pool_wrapped = False
@@ -319,6 +321,8 @@ class MontageOptions:
             self.border_rgba[3],
         )
         s += f"do_zoom={self.do_zoom}\n"
+        s += f"label_font={self.label_font}\n"
+        s += f"label_size={self.label_size}\n"
         s += f"shuffle_mode={self.shuffle_mode}\n"
         s += f"shuffle_count={self.shuffle_count}\n"
         s += f"stamp_mode={self.stamp_mode}\n"
@@ -494,6 +498,10 @@ class MontageOptions:
 
             self.bg_blur = get_opt_int(None, "background_blur", settings)
 
+            self.label_font = get_opt_str(None, "label_font", settings)
+
+            self.label_size = get_opt_int(None, "label_size", settings)
+
             self.shuffle_mode = get_opt_str(None, "shuffle_mode", settings)
 
             self.shuffle_count = get_opt_int(None, "shuffle_count", settings)
@@ -570,6 +578,12 @@ class MontageOptions:
         if self.bg_blur is None:
             self.bg_blur = defaults.bg_blur
 
+        if self.label_font is None:
+            self.label_font = ""
+
+        if self.label_size is None:
+            self.label_size = 0
+
         if self.shuffle_mode is None:
             self.shuffle_mode = ""
 
@@ -644,6 +658,12 @@ class MontageOptions:
 
             if args.bg_blur is not None:
                 self.bg_blur = args.bg_blur
+
+            if args.label_font is not None:
+                self.label_font = args.label_font
+
+            if args.label_size is not None:
+                self.label_size = args.label_size
 
             if args.shuffle_mode is not None:
                 self.shuffle_mode = args.shuffle_mode
@@ -964,20 +984,19 @@ def get_arguments():
         help="Write the option settings to a file.",
     )
 
-    # TODO: Implement the following options.
     ap.add_argument(
         "--label-font",
         dest="label_font",
         type=str,
         help="Font to use for file name label added to images. A file name "
-        + "label is useful for making an image catalog."
+        + "label is useful for making an image catalog.",
     )
 
     ap.add_argument(
         "--label-size",
         dest="label_size",
         type=int,
-        help="Point size for font used to add a file name label to images."
+        help="Point size for font used to add a file name label to images.",
     )
 
     # TODO: Add details to help messages.
@@ -1207,6 +1226,44 @@ def add_border(image, border_size, border_xy, opts):
     image.paste(border_image, border_xy, mask=border_mask)
 
 
+def add_label(
+    image: Image.Image,
+    file_name: str,
+    at_x: int,
+    at_y: int,
+    opts: MontageOptions
+):
+    assert 0 < len(opts.label_font)
+    assert 0 < opts.label_size
+
+    font = ImageFont.truetype(opts.label_font, opts.label_size)
+
+    font_size = font.getsize("M")
+
+    draw = ImageDraw.Draw(image)
+
+    label_text = Path(file_name).name
+
+    y = (at_y + font_size[1])
+
+    #  New image is RGB so there should be 3 bands.
+    bands = image.getbands()
+    assert 3 == len(bands)
+
+    px = image.getpixel((at_x, y))
+
+    #  Use average of RGB to select white or black fill (wrong way?).
+    avg = int(sum(px) / 3)
+    if 128 < avg:
+        fill_rgba = (0, 0, 0, 255)
+    else:
+        fill_rgba = (255, 255, 255, 255)
+
+    draw.text(
+        (at_x, y), label_text, font=font, fill=fill_rgba
+    )
+
+
 def create_image(opts: MontageOptions, image_num: int):
     ncols = opts.get_ncols()
     nrows = opts.get_nrows()
@@ -1350,6 +1407,11 @@ def create_image(opts: MontageOptions, image_num: int):
 
             if 0 < opts.border_width:
                 add_border(image, border_size, border_xy, opts)
+
+            if 0 < opts.label_size and 0 < len(opts.label_font):
+                label_x = place.x
+                label_y = new_y + new_h + 5
+                add_label(image, image_name, label_x, label_y, opts)
 
             if crop_box is None:
                 img = img.resize(new_size)

@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "211107.1"
+app_version = "211112.1"
 
 pub_version = "1.0.dev1"
 
@@ -121,7 +121,7 @@ class MontageOptions:
             self.im1_index = 0
         return self.im1_index
 
-    def get_bg_index(self):
+    def set_bg_index(self):
         n = len(self.init_bg_images)
         if n == 0:
             self.bg_index = -1
@@ -131,7 +131,6 @@ class MontageOptions:
             self.bg_index += 1
             if self.bg_index == len(self.init_bg_images):
                 self.bg_index = 0
-        return self.bg_index
 
     def add_placement(self, x, y, w, h, file_name=""):
         self._placements.append(Placement(x, y, w, h, file_name))
@@ -143,9 +142,8 @@ class MontageOptions:
         return 0 < len(self.init_bg_images)
 
     def get_bg_file_name(self):
-        i = self.get_bg_index()
-        if 0 <= i:
-            return self.init_bg_images[i]
+        if 0 <= self.bg_index:
+            return self.init_bg_images[self.bg_index]
         else:
             return None
 
@@ -230,11 +228,14 @@ class MontageOptions:
     def do_shuffle_bg_images(self):
         return "b" in self.shuffle_mode
 
-    def get_montage_count(self):
-        if len(self.shuffle_mode) == 0:
-            return 1
-        else:
-            return min(self.shuffle_count, MAX_SHUFFLE_COUNT)
+    # def get_montage_count(self):
+    #     if len(self.shuffle_mode) == 0:
+    #         return 1
+    #     else:
+    #         return min(self.shuffle_count, MAX_SHUFFLE_COUNT)
+
+    def get_montages_count(self):
+        return min(self.shuffle_count, MAX_SHUFFLE_COUNT)
 
     def log_add(self, message):
         self._log.append(message)
@@ -255,6 +256,7 @@ class MontageOptions:
             random.shuffle(self.image_pool)
         self._load_current_images()
         self.pool_wrapped = False
+        self.set_bg_index()
 
     def _timestamp_str(self):
         if 2 < self.stamp_mode:
@@ -962,6 +964,22 @@ def get_arguments():
         help="Write the option settings to a file.",
     )
 
+    # TODO: Implement the following options.
+    ap.add_argument(
+        "--label-font",
+        dest="label_font",
+        type=str,
+        help="Font to use for file name label added to images. A file name "
+        + "label is useful for making an image catalog."
+    )
+
+    ap.add_argument(
+        "--label-size",
+        dest="label_size",
+        type=int,
+        help="Point size for font used to add a file name label to images."
+    )
+
     # TODO: Add details to help messages.
 
     return ap.parse_args()
@@ -1350,9 +1368,9 @@ def create_image(opts: MontageOptions, image_num: int):
     opts.write_options(file_name)
 
 
-def create_montage(opts: MontageOptions):
+def create_montages(opts: MontageOptions):
     opts.check_options()
-    n_images = opts.get_montage_count()
+    n_images = opts.get_montages_count()
     for i in range(0, n_images):
         opts.prepare()
         create_image(opts, i + 1)
@@ -1373,7 +1391,7 @@ def main():
 
     opts.load(args, defaults)
 
-    create_montage(opts)
+    create_montages(opts)
 
     print(f"\nDone ({app_title}).")
 

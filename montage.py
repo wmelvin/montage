@@ -166,23 +166,31 @@ class MontageOptions:
     def set_cols(self):
         n = len(self.init_ncols)
         if "c" in self.shuffle_mode:
-            self.col_index = random.randrange(n)
+            if n == 1:
+                self.cols = random.randint(1, self.init_ncols[0])
+            else:
+                self.col_index = random.randrange(n)
+                self.cols = self.init_ncols[self.col_index]
         else:
             self.col_index += 1
-        if n <= self.col_index:
-            self.col_index = 0
-        self.cols = self.init_ncols[self.col_index]
+            if n <= self.col_index:
+                self.col_index = 0
+            self.cols = self.init_ncols[self.col_index]
         assert 0 < self.cols
 
     def set_rows(self):
         n = len(self.init_nrows)
         if "r" in self.shuffle_mode:
-            self.row_index = random.randrange(n)
+            if n == 1:
+                self.rows = random.randint(1, self.init_nrows[0])
+            else:
+                self.row_index = random.randrange(n)
+                self.rows = self.init_nrows[self.row_index]
         else:
             self.row_index += 1
-        if len(self.init_nrows) <= self.row_index:
-            self.row_index = 0
-        self.rows = self.init_nrows[self.row_index]
+            if len(self.init_nrows) <= self.row_index:
+                self.row_index = 0
+            self.rows = self.init_nrows[self.row_index]
         assert 0 < self.rows
 
     def get_ncols(self):
@@ -464,7 +472,7 @@ class MontageOptions:
         if file_name is not None:
             p = Path(file_name).expanduser().resolve()
             if not p.exists():
-                sys.stderr.write(f"ERROR: File not found: {p}")
+                sys.stderr.write(f"\nERROR: File not found: {p}\n")
                 error_exit()
 
             print(f"Load settings from '{file_name}'.")
@@ -612,7 +620,7 @@ class MontageOptions:
     def load(self, args, defaults: MontageDefaults, settings_file=None):
         if args is None and settings_file is None:
             sys.stderr.write(
-                "ERROR: No args object, and no settings file name.\n"
+                "\nERROR: No args object, and no settings file name.\n"
             )
             error_exit()
 
@@ -722,7 +730,7 @@ def error_exit():
 def get_list_from_file(file_name):
     p = Path(file_name).expanduser().resolve()
     if not p.exists():
-        sys.stderr.write(f"ERROR: File not found: {p}")
+        sys.stderr.write(f"\nERROR: File not found: {p}\n")
         error_exit()
 
     result = []

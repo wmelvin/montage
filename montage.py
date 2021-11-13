@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "211112.1"
+app_version = "211113.1"
 
 pub_version = "1.0.dev1"
 
@@ -81,6 +81,8 @@ class MontageOptions:
         self.pool_wrapped = False
         self.bg_index = -1
         self.im1_index = -1
+        self.col_index = -1
+        self.row_index = -1
 
         self.init_images = []
         #  Initial list of image file names, as loaded from the
@@ -161,35 +163,36 @@ class MontageOptions:
     def border_mask_rgba(self):
         return (0, 0, 0, self.border_rgba[3])
 
-    def shuffled_col_row(self, values: List[int], weighted_flag: str):
-        if weighted_flag in self.shuffle_mode:
-            a = []
-            for i in range(len(values)):
-                for x in range((i + 1) * 2):
-                    a.append(values[i])
-        else:
-            a = [] + values
-        random.shuffle(a)
-        return a[0]
-
-    def set_cols_rows(self) -> int:
+    def set_cols(self):
+        n = len(self.init_ncols)
         if "c" in self.shuffle_mode:
-            self.cols = self.shuffled_col_row(self.init_ncols, "wc")
+            self.col_index = random.randrange(n)
         else:
-            self.cols = self.init_ncols[0]
+            self.col_index += 1
+        if n <= self.col_index:
+            self.col_index = 0
+        self.cols = self.init_ncols[self.col_index]
+        assert 0 < self.cols
+
+    def set_rows(self):
+        n = len(self.init_nrows)
         if "r" in self.shuffle_mode:
-            self.rows = self.shuffled_col_row(self.init_nrows, "wr")
+            self.row_index = random.randrange(n)
         else:
-            self.rows = self.init_nrows[0]
+            self.row_index += 1
+        if len(self.init_nrows) <= self.row_index:
+            self.row_index = 0
+        self.rows = self.init_nrows[self.row_index]
+        assert 0 < self.rows
 
     def get_ncols(self):
         if self.cols is None:
-            self.set_cols_rows()
+            self.set_cols()
         return self.cols
 
     def get_nrows(self):
         if self.rows is None:
-            self.set_cols_rows()
+            self.set_rows()
         return self.rows
 
     def _feature_cell_count(self):
@@ -249,7 +252,8 @@ class MontageOptions:
     def prepare(self):
         self._placements.clear()
         self._log.clear()
-        self.set_cols_rows()
+        self.set_cols()
+        self.set_rows()
         if len(self.image_pool) == 0:  # First run.
             self.image_pool = [] + self.init_images
             if self.do_shuffle_images():
@@ -918,12 +922,9 @@ def get_arguments():
                 b = background image
                 c = columns
                 r = rows
-                wc = weighted columns
-                wr = weighted rows
-                (weighted favors larger numbers)
                 n = do not start over at beginning of list
                     when all images have been used.
-            Example: --shuffle-mode=ibwc
+            Example: --shuffle-mode=ib
         """
         ),
     )

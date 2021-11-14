@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "211113.1"
+app_version = "211114.1"
 
 pub_version = "1.0.dev1"
 
@@ -112,11 +112,10 @@ class MontageOptions:
         return (int(self.canvas_width), int(self.canvas_height))
 
     def get_pool_index(self):
-        first_use = self.pool_index == -1
         self.pool_index += 1
         if len(self.image_pool) <= self.pool_index:
-            self.pool_index = 0
-            self.pool_wrapped = not first_use
+            self.pool_index = -1
+            self.pool_wrapped = True
         return self.pool_index
 
     def get_im1_index(self):

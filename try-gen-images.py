@@ -18,7 +18,25 @@ def make_image(canvas_size, bg_color, suffix=''):
 
     draw = ImageDraw.Draw(image)
 
-    draw.text((10, 10), file_name, font=font, fill=(255, 255, 255, 255))
+    avg = int(sum(bg_color) / 3)
+    if 128 < avg:
+        fill_text = (0, 0, 0, 255)
+        fill_grid = (98, 98, 98, 255)
+    else:
+        fill_text = (255, 255, 255, 255)
+        fill_grid = (148, 148, 148, 255)
+
+    draw.text((15, 15), file_name, font=font, fill=fill_text)
+
+    grid_font = ImageFont.truetype('LiberationMono-Regular.ttf', size=10)
+
+    for x in range(0, canvas_size[0], 50):
+        draw.line([x, 0, x, canvas_size[1]], fill=fill_grid)
+        draw.text((x + 5, 5), str(x), font=grid_font, fill=fill_text)
+
+    for y in range(0, canvas_size[1], 50):
+        draw.line([0, y, canvas_size[0], y], fill=fill_grid)
+        draw.text((5, y + 5), str(y), font=grid_font, fill=fill_text)
 
     print(f"Saving '{file_path}'")
 

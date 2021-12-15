@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "211114.1"
+app_version = "211215.1"
 
 pub_version = "1.0.dev1"
 
@@ -419,7 +419,7 @@ class MontageOptions:
         if 0 < len(feat_attr.file_name):
             if not (
                 feat_attr.file_name == SKIP_MARKER
-                or Path(feat_attr.file_name).exists()
+                or Path(feat_attr.file_name).expanduser().resolve().exists()
             ):
                 errors.append(
                     "Feature-{0}: Image file not found: '{1}'.".format(
@@ -442,17 +442,16 @@ class MontageOptions:
                 )
 
         for file_name in self.init_images:
-            if not (
-                file_name.strip() == SKIP_MARKER or Path(file_name).exists()
-            ):
-                errors.append(f"Image file not found: '{file_name}'.")
+            if not file_name.strip() == SKIP_MARKER:
+                if not Path(file_name).expanduser().resolve().exists():
+                    errors.append(f"Image file not found: '{file_name}'.")
 
         for file_name in self.init_images1:
-            if not Path(file_name).exists():
+            if not Path(file_name).expanduser().resolve().exists():
                 errors.append(f"Image file not found: '{file_name}'.")
 
         for file_name in self.init_bg_images:
-            if not Path(file_name).exists():
+            if not Path(file_name).expanduser().resolve().exists():
                 errors.append(
                     f"Background image file not found: '{file_name}'."
                 )
@@ -532,17 +531,17 @@ class MontageOptions:
             )
 
             self.init_images += [
-                i.strip("'\"")
+                unquote(i)
                 for i in get_option_entries("[images]", file_text)
             ]
 
             self.init_images1 += [
-                i.strip("'\"")
+                unquote(i)
                 for i in get_option_entries("[images-1]", file_text)
             ]
 
             self.init_bg_images += [
-                i.strip("'\"")
+                unquote(i)
                 for i in get_option_entries("[background-images]", file_text)
             ]
 
@@ -726,6 +725,16 @@ def error_exit():
     sys.exit(1)
 
 
+def unquote(text: str) -> str:
+    s = text.strip()
+    if 0 < len(s):
+        if s[0] == '"':
+            return s.strip('"')
+        if s[0] == "'":
+            return s.strip("'")
+    return s
+
+
 def get_list_from_file(file_name):
     p = Path(file_name).expanduser().resolve()
     if not p.exists():
@@ -738,7 +747,7 @@ def get_list_from_file(file_name):
         file_text = f.readlines()
 
     for line in file_text:
-        s = line.strip()
+        s = unquote(line)
         if (0 < len(s)) and not s.startswith("#"):
             result.append(s)
 
@@ -1035,7 +1044,7 @@ def get_opt_str(default, opt_name, content):
             a = opt.split("=", 1)
             if len(a) == 2:
                 if a[0].strip() == opt_name:
-                    return a[1].strip("'\" ")
+                    return unquote(a[1])
     return default
 
 
@@ -1080,7 +1089,7 @@ def get_feature_args(feat_args):
         )
         return FeatureImage(0, 0, 0, 0, "")
 
-    fn = a[4].strip("\\'\" ")
+    fn = unquote(a[4])
 
     return FeatureImage(int(a[0]), int(a[1]), int(a[2]), int(a[3]), fn)
 
@@ -1260,7 +1269,7 @@ def add_label(
 
     px = image.getpixel((at_x, y))
 
-    #  Use average of RGB to select white or black fill (wrong way?).
+    #  Use average of RGB to select white or black fill.
     avg = int(sum(px) / 3)
     if 128 < avg:
         fill_rgba = (0, 0, 0, 255)
@@ -1294,9 +1303,13 @@ def create_image(opts: MontageOptions, image_num: int):
     image = Image.new("RGB", opts.canvas_size(), opts.background_rgb())
 
     if opts.has_background_image():
-        opts.log_say(f"Adding background image '{opts.get_bg_file_name()}'")
+        bg_filename = opts.get_bg_file_name()
 
-        bg_image = Image.open(opts.get_bg_file_name())
+        opts.log_say(f"Adding background image '{bg_filename}'")
+
+        bg_filename = str(Path(bg_filename).expanduser().resolve())
+
+        bg_image = Image.open(bg_filename)
 
         opts.log_add(f"(original) bg_image.size='{bg_image.size}")
 
@@ -1357,6 +1370,8 @@ def create_image(opts: MontageOptions, image_num: int):
                 continue
 
             opts.log_say(f"Placing image '{image_name}'")
+
+            image_name = str(Path(image_name).expanduser().resolve())
 
             img = Image.open(image_name)
 

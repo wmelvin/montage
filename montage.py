@@ -114,7 +114,7 @@ class MontageOptions:
     def get_pool_index(self):
         self.pool_index += 1
         if len(self.image_pool) <= self.pool_index:
-            self.pool_index = -1
+            self.pool_index = 0
             self.pool_wrapped = True
         return self.pool_index
 
@@ -240,12 +240,6 @@ class MontageOptions:
     def do_shuffle_bg_images(self):
         return "b" in self.shuffle_mode
 
-    # def get_montage_count(self):
-    #     if len(self.shuffle_mode) == 0:
-    #         return 1
-    #     else:
-    #         return min(self.shuffle_count, MAX_SHUFFLE_COUNT)
-
     def get_montages_count(self):
         return min(self.shuffle_count, MAX_SHUFFLE_COUNT)
 
@@ -262,6 +256,7 @@ class MontageOptions:
         self.set_cols()
         self.set_rows()
         if len(self.image_pool) == 0:  # First run.
+            self.pool_index = -1
             self.image_pool = [] + self.init_images
             if self.do_shuffle_images():
                 random.shuffle(self.image_pool)

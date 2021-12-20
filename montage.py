@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "211215.1"
+app_version = "211220.1"
 
 pub_version = "1.0.dev1"
 
@@ -983,6 +983,7 @@ def get_arguments():
 
     ap.add_argument(
         "-q",
+        "--quit",
         dest="do_quit",
         action="store_true",
         help="Quit immediately when there is an error. By default you are "

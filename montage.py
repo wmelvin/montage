@@ -14,11 +14,11 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "211220.1"
+app_version = "211229.1"
 
-pub_version = "1.0.dev1"
+pub_version = "0.1.dev1"
 
-app_title = f"montage.py - version {app_version}"
+app_title = f"montage.py - version {pub_version} (mod {app_version})"
 
 # global confirm_errors
 confirm_errors = True
@@ -778,7 +778,7 @@ def warn_old_settings(settings):
                 )
 
 
-def get_arguments():
+def get_arguments(argv):
     ap = argparse.ArgumentParser(
         formatter_class=argparse.RawTextHelpFormatter,
         description="Create an image montage given a list of image files.",
@@ -790,6 +790,14 @@ def get_arguments():
         action="store",
         help="Images files to include in the montage image. "
         + "Multiple files can be specified.",
+    )
+
+    ap.add_argument(
+        "-s",
+        "--settings-file",
+        dest="settings_file",
+        action="store",
+        help="Name of settings (options) file.",
     )
 
     ap.add_argument(
@@ -966,14 +974,6 @@ def get_arguments():
     )
 
     ap.add_argument(
-        "-s",
-        "--settings-file",
-        dest="settings_file",
-        action="store",
-        help="Name of settings file.",
-    )
-
-    ap.add_argument(
         "-z",
         "--zoom",
         dest="do_zoom",
@@ -1014,7 +1014,7 @@ def get_arguments():
 
     # TODO: Add details to help messages.
 
-    return ap.parse_args()
+    return ap.parse_args(argv[1:])
 
 
 def get_option_entries(opt_section, opt_content):
@@ -1457,12 +1457,12 @@ def create_montages(opts: MontageOptions):
         create_image(opts, i + 1)
 
 
-def main():
+def main(argv):
     print(f"\n{app_title}\n")
 
     defaults = MontageDefaults()
 
-    args = get_arguments()
+    args = get_arguments(argv)
 
     if args.do_quit:
         global confirm_errors
@@ -1476,6 +1476,8 @@ def main():
 
     print(f"\nDone ({app_title}).")
 
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main(sys.argv))

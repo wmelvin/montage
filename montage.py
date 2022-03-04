@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "211229.1"
+app_version = "220211.1"
 
 pub_version = "0.1.dev1"
 
@@ -76,6 +76,7 @@ class MontageOptions:
         self.do_zoom = None
         self.label_font = None
         self.label_size = None
+        self.img1_pos = None
 
         self.pool_index = -1
         self.pool_wrapped = False
@@ -216,6 +217,11 @@ class MontageOptions:
         self.current_images.clear()
         n_images = self._current_image_count()
 
+        #  If img1_pos is greater than the number of images then
+        #  ignore that option.
+        if n_images < self.img1_pos:
+            self.img1_pos = 0
+
         if 0 < len(self.init_images1):
             n_images -= 1
 
@@ -228,11 +234,19 @@ class MontageOptions:
                     break
                 self.current_images.append(self.image_pool[ix])
 
-        if 0 < len(self.init_images1):
+        if 0 < len(self.init_images1) and self.img1_pos < 1:
+            #  Image from [images-1] included in shuffle.
             self.current_images.append(self.init_images1[self.get_im1_index()])
 
         if self.do_shuffle_images():
             random.shuffle(self.current_images)
+
+        if 0 < len(self.init_images1) and 0 < self.img1_pos:
+            #  Image from [images-1] inserted at fixed position.
+            #  Position is in range 1..n_images (index + 1).
+            self.current_images.insert(
+                self.img1_pos - 1, self.init_images1[self.get_im1_index()]
+            )
 
     def do_shuffle_images(self):
         return "i" in self.shuffle_mode
@@ -327,6 +341,7 @@ class MontageOptions:
             self.border_rgba[3],
         )
         s += f"do_zoom={self.do_zoom}\n"
+        s += f"img1_pos={self.img1_pos}\n"
         s += f"label_font={self.label_font}\n"
         s += f"label_size={self.label_size}\n"
         s += f"shuffle_mode={self.shuffle_mode}\n"
@@ -517,6 +532,8 @@ class MontageOptions:
 
             self.do_zoom = get_opt_bool(None, "do_zoom", settings)
 
+            self.img1_pos = get_opt_int(None, "img1_pos", settings)
+
             self.feature1 = get_opt_feat(
                 get_option_entries("[feature-1]", file_text), True
             )
@@ -526,13 +543,11 @@ class MontageOptions:
             )
 
             self.init_images += [
-                unquote(i)
-                for i in get_option_entries("[images]", file_text)
+                unquote(i) for i in get_option_entries("[images]", file_text)
             ]
 
             self.init_images1 += [
-                unquote(i)
-                for i in get_option_entries("[images-1]", file_text)
+                unquote(i) for i in get_option_entries("[images-1]", file_text)
             ]
 
             self.init_bg_images += [
@@ -603,6 +618,9 @@ class MontageOptions:
 
         if self.do_zoom is None:
             self.do_zoom = False
+
+        if self.img1_pos is None:
+            self.img1_pos = 0
 
         if self.feature1 is None:
             self.feature1 = get_opt_feat("", False)
@@ -1244,7 +1262,7 @@ def add_label(
     file_name: str,
     at_x: int,
     at_y: int,
-    opts: MontageOptions
+    opts: MontageOptions,
 ):
     assert 0 < len(opts.label_font)
     assert 0 < opts.label_size
@@ -1257,7 +1275,7 @@ def add_label(
 
     label_text = Path(file_name).name
 
-    y = (at_y + font_size[1])
+    y = at_y + font_size[1]
 
     #  New image is RGB so there should be 3 bands.
     bands = image.getbands()
@@ -1272,9 +1290,7 @@ def add_label(
     else:
         fill_rgba = (255, 255, 255, 255)
 
-    draw.text(
-        (at_x, y), label_text, font=font, fill=fill_rgba
-    )
+    draw.text((at_x, y), label_text, font=font, fill=fill_rgba)
 
 
 def create_image(opts: MontageOptions, image_num: int):

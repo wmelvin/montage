@@ -60,6 +60,8 @@ An example of a **catalog image**.
 | --write-opts       |              | write_opts=         | Write the option settings to a file.                                                                                                                                                                                                           |
 | --feature-1        |              | [feature-1]         | Attributes for first featured image as (col, ncols, row, nrows, file_name).                                                                                                                                                                    |
 | --feature-2        |              | [feature-2]         | Attributes for second featured image as (col, ncols, row, nrows, file_name).                                                                                                                                                                   |
+| *(n/a)*            |              | [images-1]          | Begin list of image file names (one per line) from which one image is included in each succesive montage.                                                                                                                                      |
+| *(n/a)*            |              | img1_pos=           | Fixed cell number for image from [images-1] list (starting at 1 for top-left and counting first across columns).                                                                                                                               |
 
 ---
 

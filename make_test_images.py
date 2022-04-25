@@ -5,12 +5,20 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 def make_image(canvas_size, bg_color, suffix=''):
+
     if (0 < len(suffix)) and (not suffix.startswith('-')):
         suffix = '-' + suffix
+
     file_name = 'gen-{0}x{1}{2}.jpg'.format(
         canvas_size[0], canvas_size[1], suffix
     )
-    file_path = Path.cwd() / 'images_gen' / file_name
+
+    out_dir = Path.cwd() / 'images_gen'
+
+    if not out_dir.exists():
+        out_dir.mkdir()
+
+    file_path = out_dir / file_name
 
     image = Image.new('RGB', canvas_size, bg_color)
 

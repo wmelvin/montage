@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "220211.1"
+app_version = "220504.1"
 
 pub_version = "0.1.dev1"
 
@@ -24,7 +24,10 @@ app_title = f"montage.py - version {pub_version} (mod {app_version})"
 confirm_errors = True
 
 
-FeatureImage = namedtuple("FeatureImage", "col, ncols, row, nrows, file_name")
+# FeatureImage = namedtuple(
+# "FeatureImage", "col, ncols, row, nrows, file_name")
+
+FeatureImage = namedtuple("FeatureImage", "col, ncols, row, nrows, file_names")
 
 
 class Placement:
@@ -84,6 +87,8 @@ class MontageOptions:
         self.im1_index = -1
         self.col_index = -1
         self.row_index = -1
+        self.feature1_index = -1
+        self.feature2_index = -1
 
         self.init_images = []
         #  Initial list of image file names, as loaded from the
@@ -135,6 +140,18 @@ class MontageOptions:
             self.bg_index += 1
             if self.bg_index == len(self.init_bg_images):
                 self.bg_index = 0
+
+    def get_feature1_index(self):
+        self.feature1_index += 1
+        if len(self.feature1.file_names) <= self.feature1_index:
+            self.feature1_index = 0
+        return self.feature1_index
+
+    def get_feature2_index(self):
+        self.feature2_index += 1
+        if len(self.feature2.file_names) <= self.feature2_index:
+            self.feature2_index = 0
+        return self.feature2_index
 
     def add_placement(self, x, y, w, h, file_name=""):
         self._placements.append(Placement(x, y, w, h, file_name))
@@ -426,16 +443,17 @@ class MontageOptions:
                         f"Feature-{feat_num}: File name must be set."
                     )
 
-        if 0 < len(feat_attr.file_name):
-            if not (
-                feat_attr.file_name == SKIP_MARKER
-                or Path(feat_attr.file_name).expanduser().resolve().exists()
-            ):
-                errors.append(
-                    "Feature-{0}: Image file not found: '{1}'.".format(
-                        feat_num, feat_attr.file_name
+        if 0 < len(feat_attr.file_names):
+            for file_name in feat_attr.file_names:
+                if not (
+                    file_name == SKIP_MARKER
+                    or Path(file_name).expanduser().resolve().exists()
+                ):
+                    errors.append(
+                        "Feature-{0}: Image file not found: '{1}'.".format(
+                            feat_num, file_name
+                        )
                     )
-                )
 
         return errors
 
@@ -1085,7 +1103,7 @@ def get_opt_bool(default, opt_name, content):
 
 def get_feature_args(feat_args):
     if feat_args is None:
-        return FeatureImage(0, 0, 0, 0, "")
+        return FeatureImage(0, 0, 0, 0, [])
 
     a = feat_args.strip("()").split(",")
 
@@ -1094,18 +1112,18 @@ def get_feature_args(feat_args):
             "WARNING: Ignoring invalid feature attributes. ",
             "Expected five values separated by commas.",
         )
-        return FeatureImage(0, 0, 0, 0, "")
+        return FeatureImage(0, 0, 0, 0, [])
 
     if any(not x.strip().isdigit() for x in a[:-1]):
         print(
             "WARNING: Ignoring invalid feature attributes. ",
             "Expected first four numeric values are numeric.",
         )
-        return FeatureImage(0, 0, 0, 0, "")
+        return FeatureImage(0, 0, 0, 0, [])
 
     fn = unquote(a[4])
 
-    return FeatureImage(int(a[0]), int(a[1]), int(a[2]), int(a[3]), fn)
+    return FeatureImage(int(a[0]), int(a[1]), int(a[2]), int(a[3]), [fn])
 
 
 def get_opt_feat(section_content, default_to_none):
@@ -1114,10 +1132,18 @@ def get_opt_feat(section_content, default_to_none):
     row = get_opt_int(0, "row", section_content)
     nrows = get_opt_int(0, "num_rows", section_content)
     file_name = get_opt_str("", "file", section_content)
+
+    file_names = [file_name]
+
+    # Get any additional file names in Feature section.
+    for line in section_content:
+        if "=" not in line:
+            file_names.append(line)
+
     if (ncols == 0) and default_to_none:
         return None
     else:
-        return FeatureImage(col, ncols, row, nrows, file_name)
+        return FeatureImage(col, ncols, row, nrows, file_names)
 
 
 def as_int_list(text: str, default=None):
@@ -1194,13 +1220,18 @@ def get_rgba(default, arg_str):
         return default
 
 
-def place_feature(opts: MontageOptions, feat_attr: FeatureImage, cell_size):
+def place_feature(
+    opts: MontageOptions,
+    feat_attr: FeatureImage,
+    image_index,
+    cell_size
+):
     if feat_attr.nrows and feat_attr.ncols:
         x = opts.margin + ((feat_attr.col - 1) * cell_size[0]) + opts.padding
         y = opts.margin + ((feat_attr.row - 1) * cell_size[1]) + opts.padding
         w = int((cell_size[0] * feat_attr.ncols) - (opts.padding * 2))
         h = int((cell_size[1] * feat_attr.nrows) - (opts.padding * 2))
-        opts.add_placement(x, y, w, h, feat_attr.file_name)
+        opts.add_placement(x, y, w, h, feat_attr.file_names[image_index])
 
 
 def outside_feat(col_index, row_index, feat_attr: FeatureImage):
@@ -1353,9 +1384,9 @@ def create_image(opts: MontageOptions, image_num: int):
 
         image.paste(bg_image, (0, 0), mask=bg_mask)
 
-    place_feature(opts, opts.feature1, cell_size)
+    place_feature(opts, opts.feature1, opts.get_feature1_index(), cell_size)
 
-    place_feature(opts, opts.feature2, cell_size)
+    place_feature(opts, opts.feature2, opts.get_feature2_index(), cell_size)
 
     for row in range(nrows):
         for col in range(ncols):

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List
 
 
-app_version = "211014.1"
+app_version = "220426.1"
 
 app_name = "montool_missing"
 
@@ -90,6 +90,8 @@ class ImageList:
         self.output_dir = output_dir
         self.log = log
         self.items: List[ImageListItem] = []
+        self.num_missing = 0
+        self.num_found = 0
 
     def _get_same_path(self, list_item: ImageListItem):
         for i in self.items:
@@ -121,6 +123,8 @@ class ImageList:
         self.log.say(f"MISSING: {list_item.file_name}")
         self.log.say(f"Original location: {list_item.orig_parent}")
 
+        self.num_missing += 1
+
         #  If another item with the same parent path has already been found,
         #  then look in that item's new location first.
         if self._find_per_same_parent(list_item):
@@ -145,6 +149,7 @@ class ImageList:
                             self.log.add(f"  '{x}'")
                     list_item.new_path = str(found[0])
                     self.log.say(f"Found '{list_item.new_path}'")
+                    self.num_found += 1
                     return
             self.log.say("Not found :(")
         else:
@@ -159,6 +164,7 @@ class ImageList:
                         self.log.add(f"  '{x}'")
                 list_item.new_path = str(found[0])
                 self.log.say(f"Found '{list_item.new_path}'")
+                self.num_found += 1
                 return
             self.log.say("Not found :(")
 
@@ -354,28 +360,31 @@ def main():
     section_text = get_option_entries("[feature-1]", file_text)
     if 0 < len(section_text):
         feature_img = get_opt_str("", "file", section_text)
-        if 0 < len(feature_img):
+        if 0 < len(feature_img) and (feature_img != "(skip)"):
             image_list.items.append(ImageListItem("feature-1", feature_img))
 
     section_text = get_option_entries("[feature-2]", file_text)
     if 0 < len(section_text):
         feature_img = get_opt_str("", "file", section_text)
-        if 0 < len(feature_img):
+        if 0 < len(feature_img) and (feature_img != "(skip)"):
             image_list.items.append(ImageListItem("feature-2", feature_img))
 
     image_list.items += [
         ImageListItem("background-images", x)
         for x in get_option_entries("[background-images]", file_text)
+        if (x != "(skip)")
     ]
 
     image_list.items += [
         ImageListItem("images", x)
         for x in get_option_entries("[images]", file_text)
+        if (x != "(skip)")
     ]
 
     image_list.items += [
         ImageListItem("images-1", x)
         for x in get_option_entries("[images-1]", file_text)
+        if (x != "(skip)")
     ]
 
     log.add(f"search_dir = '{args.search_dir}'")
@@ -389,6 +398,9 @@ def main():
     image_list.write_output_a()
 
     image_list.write_output_b()
+
+    log.say(f"Number missing = {image_list.num_missing}")
+    log.say(f"  Number found = {image_list.num_found}")
 
     log.write_out()
 

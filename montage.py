@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "220504.1"
+app_version = "220505.1"
 
 pub_version = "0.1.dev1"
 
@@ -23,9 +23,6 @@ app_title = f"montage.py - version {pub_version} (mod {app_version})"
 # global confirm_errors
 confirm_errors = True
 
-
-# FeatureImage = namedtuple(
-# "FeatureImage", "col, ncols, row, nrows, file_name")
 
 FeatureImage = namedtuple("FeatureImage", "col, ncols, row, nrows, file_names")
 
@@ -152,6 +149,12 @@ class MontageOptions:
         if len(self.feature2.file_names) <= self.feature2_index:
             self.feature2_index = 0
         return self.feature2_index
+
+    def get_feature_filename(self, feature: FeatureImage, index: int):
+        if index < len(feature.file_names):
+            return feature.file_names[index]
+        else:
+            return ""
 
     def add_placement(self, x, y, w, h, file_name=""):
         self._placements.append(Placement(x, y, w, h, file_name))
@@ -367,18 +370,22 @@ class MontageOptions:
         s += f"write_opts={self.write_opts}\n"
 
         s += "\n[feature-1]\n"
-        s += f"file={qs(self.feature1.file_name)}\n"
+        s += f"file={qs(self.get_feature_filename(self.feature1, 0))}\n"
         s += f"column={self.feature1.col}\n"
         s += f"row={self.feature1.row}\n"
         s += f"num_columns={self.feature1.ncols}\n"
         s += f"num_rows={self.feature1.nrows}\n"
+        for i in self.feature1.file_names[1:]:
+            s += f"{qs(i)}\n"
 
         s += "\n[feature-2]\n"
-        s += f"file={qs(self.feature2.file_name)}\n"
+        s += f"file={qs(self.get_feature_filename(self.feature2, 0))}\n"
         s += f"column={self.feature2.col}\n"
         s += f"row={self.feature2.row}\n"
         s += f"num_columns={self.feature2.ncols}\n"
         s += f"num_rows={self.feature2.nrows}\n"
+        for i in self.feature2.file_names[1:]:
+            s += f"{qs(i)}\n"
 
         s += "\n[background-images]\n"
         for i in self.init_bg_images:
@@ -438,10 +445,10 @@ class MontageOptions:
                     f"Feature-{feat_num}: All column and row settings must "
                     + "be set to not-zero values if any are set."
                 )
-                if len(feat_attr.file_name) == 0:
-                    errors.append(
-                        f"Feature-{feat_num}: File name must be set."
-                    )
+            if len(self.get_feature_filename(feat_attr, 0)) == 0:
+                errors.append(
+                    f"Feature-{feat_num}: File name must be set."
+                )
 
         if 0 < len(feat_attr.file_names):
             for file_name in feat_attr.file_names:
@@ -1123,7 +1130,13 @@ def get_feature_args(feat_args):
 
     fn = unquote(a[4])
 
-    return FeatureImage(int(a[0]), int(a[1]), int(a[2]), int(a[3]), [fn])
+    return FeatureImage(
+        int(a[0]),
+        int(a[1]),
+        int(a[2]),
+        int(a[3]),
+        [] if len(fn) == 0 else [fn]
+    )
 
 
 def get_opt_feat(section_content, default_to_none):
@@ -1133,7 +1146,7 @@ def get_opt_feat(section_content, default_to_none):
     nrows = get_opt_int(0, "num_rows", section_content)
     file_name = get_opt_str("", "file", section_content)
 
-    file_names = [file_name]
+    file_names = [] if len(file_name) == 0 else [file_name]
 
     # Get any additional file names in Feature section.
     for line in section_content:

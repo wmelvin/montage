@@ -128,6 +128,7 @@ def test_feature_images_as_list(tmp_path, generated_images_path):
             border_width=10
             border_rgba=255,255,255,128
             shuffle_count=3
+            write_opts=True
 
             # Put the images from the images-1 list in the center of the
             # montage.  That is position 7 because the cells holding
@@ -135,11 +136,15 @@ def test_feature_images_as_list(tmp_path, generated_images_path):
             img1_pos=7
 
             [feature-1]
-            file={1}/gen-480x640-D.jpg
+            file=
             column=2
             row=1
             num_columns=2
             num_rows=2
+            {1}/gen-480x640-D.jpg
+
+            # 'file=' can be empty if a file name is included on
+            # a separate line.
 
             [feature-2]
             file={1}/gen-480x640-E.jpg
@@ -148,7 +153,7 @@ def test_feature_images_as_list(tmp_path, generated_images_path):
             num_columns=2
             num_rows=2
 
-            # Blank lines and comments do not break the section.
+            # Blank lines and comments do not break a [section].
 
             # Additional file names in a feature section are appended to
             # the list after the one in the 'file=' setting.

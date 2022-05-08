@@ -7,8 +7,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import List
 
+from montage import expand_image_list, unquote
 
-app_version = "220426.1"
+
+app_version = "220508.1"
 
 app_name = "montool_missing"
 
@@ -114,6 +116,7 @@ class ImageList:
                         self.log.add(f"  '{x}'")
                 list_item.new_path = str(found[0])
                 self.log.say(f"Found '{list_item.new_path}'")
+                self.num_found += 1
                 return True
         return False
 
@@ -357,6 +360,8 @@ def main():
 
     image_list = ImageList(args.opt_file, output_dir, log)
 
+    # TODO: Handle list of images in a Feature section.
+
     section_text = get_option_entries("[feature-1]", file_text)
     if 0 < len(section_text):
         feature_img = get_opt_str("", "file", section_text)
@@ -370,21 +375,36 @@ def main():
             image_list.items.append(ImageListItem("feature-2", feature_img))
 
     image_list.items += [
-        ImageListItem("background-images", x)
-        for x in get_option_entries("[background-images]", file_text)
-        if (x != "(skip)")
+        ImageListItem("background-images", a)
+        for a in expand_image_list(
+            [
+                unquote(b)
+                for b in get_option_entries("[background-images]", file_text)
+                if (b != "(skip)")
+            ]
+        )
     ]
 
     image_list.items += [
-        ImageListItem("images", x)
-        for x in get_option_entries("[images]", file_text)
-        if (x != "(skip)")
+        ImageListItem("images", a)
+        for a in expand_image_list(
+            [
+                unquote(b)
+                for b in get_option_entries("[images]", file_text)
+                if (b != "(skip)")
+            ]
+        )
     ]
 
     image_list.items += [
-        ImageListItem("images-1", x)
-        for x in get_option_entries("[images-1]", file_text)
-        if (x != "(skip)")
+        ImageListItem("images-1", a)
+        for a in expand_image_list(
+            [
+                unquote(b)
+                for b in get_option_entries("[images-1]", file_text)
+                if (b != "(skip)")
+            ]
+        )
     ]
 
     log.add(f"search_dir = '{args.search_dir}'")
@@ -399,8 +419,9 @@ def main():
 
     image_list.write_output_b()
 
-    log.say(f"Number missing = {image_list.num_missing}")
-    log.say(f"  Number found = {image_list.num_found}")
+    log.say(f"Count of missing image files = {image_list.num_missing}")
+    if 0 < image_list.num_missing:
+        log.say(f"Count of those found = {image_list.num_found}")
 
     log.write_out()
 

@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "220505.1"
+app_version = "220507.1"
 
 pub_version = "0.1.dev1"
 
@@ -76,7 +76,9 @@ class MontageOptions:
         self.do_zoom = None
         self.label_font = None
         self.label_size = None
-        self.img1_pos = None
+        self.init_img1_pos = None
+        self.curr_img1_pos = None
+        self.img1_pos_index = -1
 
         self.pool_index = -1
         self.pool_wrapped = False
@@ -213,6 +215,15 @@ class MontageOptions:
             self.rows = self.init_nrows[self.row_index]
         assert 0 < self.rows
 
+    def _set_img1_pos(self):
+        if len(self.init_img1_pos) == 0:
+            self.curr_img1_pos = 0
+        else:
+            self.img1_pos_index += 1
+            if len(self.init_img1_pos) <= self.img1_pos_index:
+                self.img1_pos_index = 0
+            self.curr_img1_pos = self.init_img1_pos[self.img1_pos_index]
+
     def get_ncols(self):
         if self.cols is None:
             self.set_cols()
@@ -237,10 +248,12 @@ class MontageOptions:
         self.current_images.clear()
         n_images = self._current_image_count()
 
+        self._set_img1_pos()
+
         #  If img1_pos is greater than the number of images then
         #  ignore that option.
-        if n_images < self.img1_pos:
-            self.img1_pos = 0
+        if n_images < self.curr_img1_pos:
+            self.curr_img1_pos = 0
 
         if 0 < len(self.init_images1):
             n_images -= 1
@@ -254,18 +267,18 @@ class MontageOptions:
                     break
                 self.current_images.append(self.image_pool[ix])
 
-        if 0 < len(self.init_images1) and self.img1_pos < 1:
+        if 0 < len(self.init_images1) and self.curr_img1_pos < 1:
             #  Image from [images-1] included in shuffle.
             self.current_images.append(self.init_images1[self.get_im1_index()])
 
         if self.do_shuffle_images():
             random.shuffle(self.current_images)
 
-        if 0 < len(self.init_images1) and 0 < self.img1_pos:
+        if 0 < len(self.init_images1) and 0 < self.curr_img1_pos:
             #  Image from [images-1] inserted at fixed position.
             #  Position is in range 1..n_images (index + 1).
             self.current_images.insert(
-                self.img1_pos - 1, self.init_images1[self.get_im1_index()]
+                self.curr_img1_pos - 1, self.init_images1[self.get_im1_index()]
             )
 
     def do_shuffle_images(self):
@@ -361,7 +374,7 @@ class MontageOptions:
             self.border_rgba[3],
         )
         s += f"do_zoom={self.do_zoom}\n"
-        s += f"img1_pos={self.img1_pos}\n"
+        s += f"img1_pos={int_list_str(self.init_img1_pos)}\n"
         s += f"label_font={self.label_font}\n"
         s += f"label_size={self.label_size}\n"
         s += f"shuffle_mode={self.shuffle_mode}\n"
@@ -557,7 +570,9 @@ class MontageOptions:
 
             self.do_zoom = get_opt_bool(None, "do_zoom", settings)
 
-            self.img1_pos = get_opt_int(None, "img1_pos", settings)
+            self.init_img1_pos = as_int_list(
+                get_opt_str(None, "img1_pos", settings)
+            )
 
             self.feature1 = get_opt_feat(
                 get_option_entries("[feature-1]", file_text), True
@@ -581,7 +596,7 @@ class MontageOptions:
             ]
 
     def _set_defaults(self, defaults: MontageDefaults):
-        # -- Use defaults for options not already set.
+        #  Use defaults for options not already set.
 
         if self.output_file_name is None:
             self.output_file_name = defaults.file_name
@@ -644,8 +659,8 @@ class MontageOptions:
         if self.do_zoom is None:
             self.do_zoom = False
 
-        if self.img1_pos is None:
-            self.img1_pos = 0
+        if self.init_img1_pos is None:
+            self.init_img1_pos = []
 
         if self.feature1 is None:
             self.feature1 = get_opt_feat("", False)
@@ -1148,7 +1163,7 @@ def get_opt_feat(section_content, default_to_none):
 
     file_names = [] if len(file_name) == 0 else [file_name]
 
-    # Get any additional file names in Feature section.
+    #  Get any additional file names in Feature section.
     for line in section_content:
         if "=" not in line:
             file_names.append(line)

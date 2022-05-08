@@ -68,6 +68,8 @@ def test_feature_images(tmp_path, generated_images_path):
             border_width=10
             border_rgba=255,255,255,128
             shuffle_count=3
+            write_opts=True
+            img1_pos=1,2
 
             [feature-1]
             file={1}/gen-480x640-D.jpg
@@ -116,7 +118,7 @@ def test_feature_images_as_list(tmp_path, generated_images_path):
         dedent(
             """
             [settings]
-            output_file=test_feature_images.jpg
+            output_file=test_feature_images_as_list.jpg
             output_dir="{0}"
             canvas_width=1920
             canvas_height=1080

@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "220802.1"
+app_version = "220906.1"
 
 pub_version = "0.1.dev1"
 
@@ -166,8 +166,8 @@ class MontageOptions:
     def get_placements_list(self) -> List[Placement]:
         return self._placements
 
-    def has_background_image(self):
-        return 0 < len(self.init_bg_images)
+    def has_background_image(self) -> bool:
+        return bool(self.init_bg_images)
 
     def get_bg_file_name(self):
         if 0 <= self.bg_index:
@@ -200,7 +200,8 @@ class MontageOptions:
             if n <= self.col_index:
                 self.col_index = 0
             self.cols = self.init_ncols[self.col_index]
-        assert 0 < self.cols
+
+        assert self.cols
 
     def set_rows(self):
         n = len(self.init_nrows)
@@ -215,7 +216,8 @@ class MontageOptions:
             if len(self.init_nrows) <= self.row_index:
                 self.row_index = 0
             self.rows = self.init_nrows[self.row_index]
-        assert 0 < self.rows
+
+        assert self.rows
 
     def _set_img1_pos(self):
         if len(self.init_img1_pos) == 0:
@@ -257,26 +259,26 @@ class MontageOptions:
         if n_images < self.curr_img1_pos:
             self.curr_img1_pos = 0
 
-        if 0 < len(self.init_images1):
+        if self.init_images1:
             n_images -= 1
 
         no_wrap = "n" in self.shuffle_mode
 
-        if 0 < len(self.image_pool):
+        if self.image_pool:
             while len(self.current_images) < n_images:
                 ix = self.get_pool_index()
                 if self.pool_wrapped and no_wrap:
                     break
                 self.current_images.append(self.image_pool[ix])
 
-        if 0 < len(self.init_images1) and self.curr_img1_pos < 1:
+        if self.init_images1 and self.curr_img1_pos < 1:
             #  Image from [images-1] included in shuffle.
             self.current_images.append(self.init_images1[self.get_im1_index()])
 
         if self.do_shuffle_images():
             random.shuffle(self.current_images)
 
-        if 0 < len(self.init_images1) and 0 < self.curr_img1_pos:
+        if self.init_images1 and 0 < self.curr_img1_pos:
             #  Image from [images-1] inserted at fixed position.
             #  Position is in range 1..n_images (index + 1).
             self.current_images.insert(
@@ -306,15 +308,17 @@ class MontageOptions:
         #  Adjust placement to available columns and rows in case feature
         #  is out-of-bounds as specified.
         img_ncols = self.get_ncols()
+
         at_col = feat.col
         while 1 < at_col and img_ncols < ((at_col - 1) + feat.ncols):
             at_col -= 1
+
         use_ncols = feat.ncols
         while 0 < use_ncols and img_ncols < use_ncols:
             use_ncols -= 1
 
-        assert 0 < at_col
-        assert 0 < use_ncols
+        assert at_col
+        assert use_ncols
 
         img_nrows = self.get_nrows()
         at_row = feat.row
@@ -324,8 +328,8 @@ class MontageOptions:
         while 0 < use_nrows and img_nrows < use_nrows:
             use_nrows -= 1
 
-        assert 0 < at_row
-        assert 0 < use_nrows
+        assert at_row
+        assert use_nrows
 
         return FeatureImage(
             at_col, use_ncols, at_row, use_nrows, feat.file_names
@@ -474,7 +478,7 @@ class MontageOptions:
                 for i in self.current_images:
                     f.write(f"{qs(i)}\n")
 
-                if 0 < len(self._log):
+                if self._log:
                     f.write("\n\n[LOG: STEPS]\n")
                     for i in self._log:
                         f.write(f"{i}\n")
@@ -497,7 +501,7 @@ class MontageOptions:
             if len(self.get_feature_filename(feat_attr, 0)) == 0:
                 errors.append(f"Feature-{feat_num}: File name must be set.")
 
-        if 0 < len(feat_attr.file_names):
+        if feat_attr.file_names:
             for file_name in feat_attr.file_names:
                 if not (
                     file_name == SKIP_MARKER
@@ -514,7 +518,7 @@ class MontageOptions:
     def check_options(self):
         errors = []
 
-        if 0 < len(self.output_dir):
+        if self.output_dir:
             if not Path(self.output_dir).exists():
                 errors.append(f"Output folder not found: '{self.output_dir}'.")
 
@@ -542,7 +546,7 @@ class MontageOptions:
 
         errors += self.check_feature(2, self.init_feature2)
 
-        if 0 < len(errors):
+        if errors:
             print("\nCANNOT PROCEED")
             for message in errors:
                 sys.stderr.write(f"{message}\n")
@@ -786,7 +790,7 @@ class MontageOptions:
                 self.init_feature2 = get_feature_args(args.feature_2)
 
             self.init_images = [
-                i for i in args.images if 0 < len(i)
+                i for i in args.images if i
             ] + self.init_images
 
         self.init_images = expand_image_list(self.init_images)
@@ -814,7 +818,7 @@ def error_exit():
 
 def unquote(text: str) -> str:
     s = text.strip()
-    if 0 < len(s):
+    if s:
         if s[0] == '"':
             return s.strip('"')
         if s[0] == "'":
@@ -835,7 +839,7 @@ def get_list_from_file(file_name):
 
     for line in file_text:
         s = unquote(line)
-        if (0 < len(s)) and not s.startswith("#"):
+        if s and not s.startswith("#"):
             result.append(s)
 
     return result
@@ -843,7 +847,7 @@ def get_list_from_file(file_name):
 
 def expand_image_list(raw_list):
     new_list = []
-    if (raw_list is not None) and (0 < len(raw_list)):
+    if raw_list:
         for item in raw_list:
             if item.startswith("@"):
                 new_list += get_list_from_file(item[1:])
@@ -1114,7 +1118,7 @@ def get_option_entries(opt_section, opt_content):
     in_section = False
     for line in opt_content:
         s = line.strip()
-        if (0 < len(s)) and not s.startswith("#"):
+        if s and not s.startswith("#"):
             if in_section:
                 #  New section?
                 if s.startswith("["):
@@ -1218,7 +1222,7 @@ def as_int_list(text: str, default=None):
         return default
     else:
         a = [
-            int(x) for x in [t.strip() for t in text.split(",")] if 0 < len(x)
+            int(x) for x in [t.strip() for t in text.split(",")] if x
         ]
         return a
 
@@ -1354,8 +1358,8 @@ def add_label(
     at_y: int,
     opts: MontageOptions,
 ):
-    assert 0 < len(opts.label_font)
-    assert 0 < opts.label_size
+    assert opts.label_font
+    assert opts.label_size
 
     font = ImageFont.truetype(opts.label_font, opts.label_size)
 
@@ -1461,8 +1465,6 @@ def create_image(opts: MontageOptions, image_num: int):
 
     i = 0
     for place in opts.get_placements_list():
-        # if i < len(opts.current_images):
-
         if len(place.file_name) == 0:
             if i < len(opts.current_images):
                 image_name = opts.current_images[i]
@@ -1472,7 +1474,7 @@ def create_image(opts: MontageOptions, image_num: int):
         else:
             image_name = place.file_name
 
-        assert 0 < len(image_name)
+        assert image_name
 
         if image_name == SKIP_MARKER:
             opts.log_say("Skip placement.")
@@ -1540,7 +1542,7 @@ def create_image(opts: MontageOptions, image_num: int):
         if 0 < opts.border_width:
             add_border(image, border_size, border_xy, opts)
 
-        if 0 < opts.label_size and 0 < len(opts.label_font):
+        if 0 < opts.label_size and opts.label_font:
             label_x = place.x
             label_y = new_y + new_h + 5
             add_label(image, image_name, label_x, label_y, opts)

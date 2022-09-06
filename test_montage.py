@@ -180,3 +180,54 @@ def test_feature_images_as_list(tmp_path, generated_images_path):
     result = montage.main(args)
     assert result == 0
     assert len(list(out_path.glob("**/*.jpg"))) == 3, "Should create 3 files."
+
+
+def test_feature_adjusts_to_bounds(tmp_path, generated_images_path):
+    reload(montage)
+    out_path = tmp_path / "output"
+    out_path.mkdir()
+    opt_file = tmp_path / "options.txt"
+    opt_file.write_text(
+        dedent(
+            """
+            [settings]
+            output_file=test_feature_adjusts_to_bounds.jpg
+            output_dir="{0}"
+            canvas_width=1920
+            canvas_height=1080
+            background_rgba=90,120,90,128
+
+            # Number of rows and columns becomes less than feature size.
+            columns=5,4,4,4,3
+               rows=4,3,2,1,1
+
+            shuffle_count=5
+            margin=10
+            padding=20
+            border_width=10
+            border_rgba=255,255,255,128
+            write_opts=True
+
+            [feature-1]
+            file={1}/gen-400x400-A.jpg
+            column=1
+            row=2
+            num_columns=3
+            num_rows=2
+
+            [images]
+            {1}/gen-400x400-B.jpg
+            {1}/gen-400x400-C.jpg
+            {1}/gen-480x640-D.jpg
+            {1}/gen-480x640-E.jpg
+            {1}/gen-480x640-F.jpg
+            {1}/gen-640x480-J.jpg
+            {1}/gen-640x480-K.jpg
+            {1}/gen-640x480-L.jpg
+            """
+        ).format(str(out_path), str(generated_images_path))
+    )
+    args = ["montage.py", "-s", str(opt_file)]
+    result = montage.main(args)
+    assert result == 0
+    assert len(list(out_path.glob("**/*.jpg"))) == 5, "Should create 5 files."

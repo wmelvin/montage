@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "220507.1"
+app_version = "220802.1"
 
 pub_version = "0.1.dev1"
 
@@ -63,6 +63,8 @@ class MontageOptions:
         self.cols = None
         self.margin = None
         self.padding = None
+        self.init_feature1 = None
+        self.init_feature2 = None
         self.feature1 = None
         self.feature2 = None
         self.bg_rgba = None
@@ -297,11 +299,45 @@ class MontageOptions:
         print(message)
         self._log.append(message)
 
+    def prepare_feature(self, feat: FeatureImage) -> FeatureImage:
+        if feat.ncols == 0 or feat.nrows == 0:
+            return feat
+
+        #  Adjust placement to available columns and rows in case feature
+        #  is out-of-bounds as specified.
+        img_ncols = self.get_ncols()
+        at_col = feat.col
+        while 1 < at_col and img_ncols < ((at_col - 1) + feat.ncols):
+            at_col -= 1
+        use_ncols = feat.ncols
+        while 0 < use_ncols and img_ncols < use_ncols:
+            use_ncols -= 1
+
+        assert 0 < at_col
+        assert 0 < use_ncols
+
+        img_nrows = self.get_nrows()
+        at_row = feat.row
+        while 1 < at_row and img_nrows < ((at_row - 1) + feat.nrows):
+            at_row -= 1
+        use_nrows = feat.nrows
+        while 0 < use_nrows and img_nrows < use_nrows:
+            use_nrows -= 1
+
+        assert 0 < at_row
+        assert 0 < use_nrows
+
+        return FeatureImage(
+            at_col, use_ncols, at_row, use_nrows, feat.file_names
+        )
+
     def prepare(self):
         self._placements.clear()
         self._log.clear()
         self.set_cols()
         self.set_rows()
+        self.feature1 = self.prepare_feature(self.init_feature1)
+        self.feature2 = self.prepare_feature(self.init_feature2)
         if len(self.image_pool) == 0:  # First run.
             self.pool_index = -1
             self.image_pool = [] + self.init_images
@@ -459,9 +495,7 @@ class MontageOptions:
                     + "be set to not-zero values if any are set."
                 )
             if len(self.get_feature_filename(feat_attr, 0)) == 0:
-                errors.append(
-                    f"Feature-{feat_num}: File name must be set."
-                )
+                errors.append(f"Feature-{feat_num}: File name must be set.")
 
         if 0 < len(feat_attr.file_names):
             for file_name in feat_attr.file_names:
@@ -504,9 +538,9 @@ class MontageOptions:
                     f"Background image file not found: '{file_name}'."
                 )
 
-        errors += self.check_feature(1, self.feature1)
+        errors += self.check_feature(1, self.init_feature1)
 
-        errors += self.check_feature(2, self.feature2)
+        errors += self.check_feature(2, self.init_feature2)
 
         if 0 < len(errors):
             print("\nCANNOT PROCEED")
@@ -574,11 +608,11 @@ class MontageOptions:
                 get_opt_str(None, "img1_pos", settings)
             )
 
-            self.feature1 = get_opt_feat(
+            self.init_feature1 = get_opt_feat(
                 get_option_entries("[feature-1]", file_text), True
             )
 
-            self.feature2 = get_opt_feat(
+            self.init_feature2 = get_opt_feat(
                 get_option_entries("[feature-2]", file_text), True
             )
 
@@ -662,11 +696,11 @@ class MontageOptions:
         if self.init_img1_pos is None:
             self.init_img1_pos = []
 
-        if self.feature1 is None:
-            self.feature1 = get_opt_feat("", False)
+        if self.init_feature1 is None:
+            self.init_feature1 = get_opt_feat("", False)
 
-        if self.feature2 is None:
-            self.feature2 = get_opt_feat("", False)
+        if self.init_feature2 is None:
+            self.init_feature2 = get_opt_feat("", False)
 
     def load(self, args, defaults: MontageDefaults, settings_file=None):
         if args is None and settings_file is None:
@@ -746,10 +780,10 @@ class MontageOptions:
                     self.do_zoom = True
 
             if args.feature_1 is not None:
-                self.feature1 = get_feature_args(args.feature_1)
+                self.init_feature1 = get_feature_args(args.feature_1)
 
             if args.feature_2 is not None:
-                self.feature2 = get_feature_args(args.feature_2)
+                self.init_feature2 = get_feature_args(args.feature_2)
 
             self.init_images = [
                 i for i in args.images if 0 < len(i)
@@ -1150,7 +1184,7 @@ def get_feature_args(feat_args):
         int(a[1]),
         int(a[2]),
         int(a[3]),
-        [] if len(fn) == 0 else [fn]
+        [] if len(fn) == 0 else [fn],
     )
 
 
@@ -1249,10 +1283,7 @@ def get_rgba(default, arg_str):
 
 
 def place_feature(
-    opts: MontageOptions,
-    feat_attr: FeatureImage,
-    image_index,
-    cell_size
+    opts: MontageOptions, feat_attr: FeatureImage, image_index, cell_size
 ):
     if feat_attr.nrows and feat_attr.ncols:
         x = opts.margin + ((feat_attr.col - 1) * cell_size[0]) + opts.padding
@@ -1412,9 +1443,13 @@ def create_image(opts: MontageOptions, image_num: int):
 
         image.paste(bg_image, (0, 0), mask=bg_mask)
 
-    place_feature(opts, opts.feature1, opts.get_feature1_index(), cell_size)
+    place_feature(
+        opts, opts.feature1, opts.get_feature1_index(), cell_size
+    )
 
-    place_feature(opts, opts.feature2, opts.get_feature2_index(), cell_size)
+    place_feature(
+        opts, opts.feature2, opts.get_feature2_index(), cell_size
+    )
 
     for row in range(nrows):
         for col in range(ncols):
@@ -1426,94 +1461,97 @@ def create_image(opts: MontageOptions, image_num: int):
 
     i = 0
     for place in opts.get_placements_list():
-        if i < len(opts.current_images):
+        # if i < len(opts.current_images):
 
-            if len(place.file_name) == 0:
+        if len(place.file_name) == 0:
+            if i < len(opts.current_images):
                 image_name = opts.current_images[i]
                 i += 1
             else:
-                image_name = place.file_name
-
-            assert 0 < len(image_name)
-
-            if image_name == SKIP_MARKER:
-                opts.log_say("Skip placement.")
                 continue
+        else:
+            image_name = place.file_name
 
-            opts.log_say(f"Placing image '{image_name}'")
+        assert 0 < len(image_name)
 
-            image_name = str(Path(image_name).expanduser().resolve())
+        if image_name == SKIP_MARKER:
+            opts.log_say("Skip placement.")
+            continue
 
-            img = Image.open(image_name)
+        opts.log_say(f"Placing image '{image_name}'")
 
-            img = ImageOps.exif_transpose(img)
+        image_name = str(Path(image_name).expanduser().resolve())
 
-            scale_w = place.width / img.width
-            scale_h = place.height / img.height
+        img = Image.open(image_name)
 
-            precrop_w = None
-            precrop_h = None
-            crop_box = None
+        img = ImageOps.exif_transpose(img)
 
-            if opts.do_zoom:
-                scale_by = max(scale_w, scale_h)
-                precrop_w = int(img.width * scale_by)
-                precrop_h = int(img.height * scale_by)
-                new_w = place.width
-                new_h = place.height
-                new_x = place.x
-                new_y = place.y
-                if 0 < opts.border_width:
-                    border_size = (place.width, place.height)
-                    border_xy = (place.x, place.y)
-                    new_w = new_w - (opts.border_width * 2)
-                    new_h = new_h - (opts.border_width * 2)
-                    new_x = new_x + opts.border_width
-                    new_y = new_y + opts.border_width
+        scale_w = place.width / img.width
+        scale_h = place.height / img.height
 
-                crop_box = get_crop_box((precrop_w, precrop_h), (new_w, new_h))
+        precrop_w = None
+        precrop_h = None
+        crop_box = None
 
+        if opts.do_zoom:
+            scale_by = max(scale_w, scale_h)
+            precrop_w = int(img.width * scale_by)
+            precrop_h = int(img.height * scale_by)
+            new_w = place.width
+            new_h = place.height
+            new_x = place.x
+            new_y = place.y
+            if 0 < opts.border_width:
+                border_size = (place.width, place.height)
+                border_xy = (place.x, place.y)
+                new_w = new_w - (opts.border_width * 2)
+                new_h = new_h - (opts.border_width * 2)
+                new_x = new_x + opts.border_width
+                new_y = new_y + opts.border_width
+
+            crop_box = get_crop_box((precrop_w, precrop_h), (new_w, new_h))
+
+        else:
+            scale_by = min(scale_w, scale_h)
+            new_w = int(img.width * scale_by)
+            new_h = int(img.height * scale_by)
+
+            if new_w < place.width:
+                new_x = place.x + int((place.width - new_w) / 2)
             else:
-                scale_by = min(scale_w, scale_h)
-                new_w = int(img.width * scale_by)
-                new_h = int(img.height * scale_by)
+                new_x = place.x
 
-                if new_w < place.width:
-                    new_x = place.x + int((place.width - new_w) / 2)
-                else:
-                    new_x = place.x
-
-                if new_h < place.height:
-                    new_y = place.y + int((place.height - new_h) / 2)
-                else:
-                    new_y = place.y
-
-                if 0 < opts.border_width:
-                    border_size = (new_w, new_h)
-                    border_xy = (new_x, new_y)
-                    new_w = new_w - (opts.border_width * 2)
-                    new_h = new_h - (opts.border_width * 2)
-                    new_x = new_x + opts.border_width
-                    new_y = new_y + opts.border_width
-
-            new_size = (new_w, new_h)
-            new_xy = (new_x, new_y)
+            if new_h < place.height:
+                new_y = place.y + int((place.height - new_h) / 2)
+            else:
+                new_y = place.y
 
             if 0 < opts.border_width:
-                add_border(image, border_size, border_xy, opts)
+                border_size = (new_w, new_h)
+                border_xy = (new_x, new_y)
+                new_w = new_w - (opts.border_width * 2)
+                new_h = new_h - (opts.border_width * 2)
+                new_x = new_x + opts.border_width
+                new_y = new_y + opts.border_width
 
-            if 0 < opts.label_size and 0 < len(opts.label_font):
-                label_x = place.x
-                label_y = new_y + new_h + 5
-                add_label(image, image_name, label_x, label_y, opts)
+        new_size = (new_w, new_h)
+        new_xy = (new_x, new_y)
 
-            if crop_box is None:
-                img = img.resize(new_size)
-            else:
-                img = img.resize((precrop_w, precrop_h))
-                img = img.crop(crop_box)
+        if 0 < opts.border_width:
+            add_border(image, border_size, border_xy, opts)
 
-            image.paste(img, new_xy)
+        if 0 < opts.label_size and 0 < len(opts.label_font):
+            label_x = place.x
+            label_y = new_y + new_h + 5
+            add_label(image, image_name, label_x, label_y, opts)
+
+        if crop_box is None:
+            img = img.resize(new_size)
+        else:
+            img = img.resize((precrop_w, precrop_h))
+            img = img.crop(crop_box)
+
+        image.paste(img, new_xy)
 
     file_name = opts.image_file_name(image_num)
 

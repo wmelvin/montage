@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "220906.1"
+app_version = "220912.1"
 
 pub_version = "0.1.dev1"
 
@@ -884,8 +884,8 @@ def get_arguments(argv):
         "images",
         nargs="*",
         action="store",
-        help="Images files to include in the montage image. "
-        + "Multiple files can be specified.",
+        help="Images files to include in the montage image."
+             " Multiple files can be specified.",
     )
 
     ap.add_argument(
@@ -1012,8 +1012,8 @@ def get_arguments(argv):
         dest="feature_1",
         type=str,
         action="store",
-        help="Attributes for first featured image as "
-        + "(col, ncols, row, nrows, file_name).",
+        help="Attributes for first featured image as"
+             " (col, ncols, row, nrows, file_name).",
     )
 
     ap.add_argument(
@@ -1021,8 +1021,8 @@ def get_arguments(argv):
         dest="feature_2",
         type=str,
         action="store",
-        help="Attributes for second featured image as "
-        + "(col, ncols, row, nrows, file_name).",
+        help="Attributes for second featured image as"
+             " (col, ncols, row, nrows, file_name).",
     )
 
     ap.add_argument(
@@ -1082,8 +1082,8 @@ def get_arguments(argv):
         "--quit",
         dest="do_quit",
         action="store_true",
-        help="Quit immediately when there is an error. By default you are "
-        + "asked to press Enter to acknowledge the error message.",
+        help="Quit immediately when there is an error. By default you are"
+             " asked to press Enter to acknowledge the error message.",
     )
 
     ap.add_argument(
@@ -1097,8 +1097,8 @@ def get_arguments(argv):
         "--label-font",
         dest="label_font",
         type=str,
-        help="Font to use for file name label added to images. A file name "
-        + "label is useful for making an image catalog.",
+        help="Font to use for file name label added to images. A file name"
+             " label is useful for making an image catalog.",
     )
 
     ap.add_argument(
@@ -1169,15 +1169,15 @@ def get_feature_args(feat_args):
 
     if len(a) != 5:
         print(
-            "WARNING: Ignoring invalid feature attributes. ",
-            "Expected five values separated by commas.",
+            "WARNING: Ignoring invalid feature attributes. "
+            "Expected five values separated by commas."
         )
         return FeatureImage(0, 0, 0, 0, [])
 
     if any(not x.strip().isdigit() for x in a[:-1]):
         print(
-            "WARNING: Ignoring invalid feature attributes. ",
-            "Expected first four numeric values are numeric.",
+            "WARNING: Ignoring invalid feature attributes. "
+            "Expected first four numeric values are numeric."
         )
         return FeatureImage(0, 0, 0, 0, [])
 
@@ -1255,17 +1255,17 @@ def get_rgba(default, arg_str):
 
     if any(not x.isdigit() for x in a):
         print(
-            "WARNING: Invalid backround color setting. ",
-            "Expecting numeric values separated by commas. ",
-            "Using default setting.",
+            "WARNING: Invalid backround color setting. "
+            "Expecting numeric values separated by commas. "
+            "Using default setting."
         )
         return default
 
     if any(int(x) < 0 or 255 < int(x) for x in a):
         print(
-            "WARNING: Invalid backround color setting. ",
-            "Expecting numeric values between 0 and 255. ",
-            "Using default setting.",
+            "WARNING: Invalid backround color setting. "
+            "Expecting numeric values between 0 and 255. "
+            "Using default setting."
         )
         return default
 
@@ -1278,10 +1278,10 @@ def get_rgba(default, arg_str):
         return rgba
     else:
         print(
-            "WARNING: Invalid color setting. ",
-            "Expecting numeric color values separated by commas",
-            "('r,g,b' or 'r,g,b,a'). ",
-            "Using default.",
+            "WARNING: Invalid color setting. "
+            "Expecting numeric color values separated by commas "
+            "('r,g,b' or 'r,g,b,a'). "
+            "Using default."
         )
         return default
 

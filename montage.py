@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "220912.1"
+app_version = "220916.1"
 
 pub_version = "0.1.dev1"
 
@@ -118,14 +118,14 @@ class MontageOptions:
     def canvas_size(self):
         return (int(self.canvas_width), int(self.canvas_height))
 
-    def get_pool_index(self):
+    def get_next_pool_index(self):
         self.pool_index += 1
         if len(self.image_pool) <= self.pool_index:
             self.pool_index = 0
             self.pool_wrapped = True
         return self.pool_index
 
-    def get_im1_index(self):
+    def get_next_im1_index(self):
         self.im1_index += 1
         if len(self.init_images1) <= self.im1_index:
             self.im1_index = 0
@@ -142,13 +142,13 @@ class MontageOptions:
             if self.bg_index == len(self.init_bg_images):
                 self.bg_index = 0
 
-    def get_feature1_index(self):
+    def get_next_feature1_index(self):
         self.feature1_index += 1
         if len(self.feature1.file_names) <= self.feature1_index:
             self.feature1_index = 0
         return self.feature1_index
 
-    def get_feature2_index(self):
+    def get_next_feature2_index(self):
         self.feature2_index += 1
         if len(self.feature2.file_names) <= self.feature2_index:
             self.feature2_index = 0
@@ -266,14 +266,14 @@ class MontageOptions:
 
         if self.image_pool:
             while len(self.current_images) < n_images:
-                ix = self.get_pool_index()
+                ix = self.get_next_pool_index()
                 if self.pool_wrapped and no_wrap:
                     break
                 self.current_images.append(self.image_pool[ix])
 
         if self.init_images1 and self.curr_img1_pos < 1:
             #  Image from [images-1] included in shuffle.
-            self.current_images.append(self.init_images1[self.get_im1_index()])
+            self.current_images.append(self.init_images1[self.get_next_im1_index()])
 
         if self.do_shuffle_images():
             random.shuffle(self.current_images)
@@ -282,7 +282,7 @@ class MontageOptions:
             #  Image from [images-1] inserted at fixed position.
             #  Position is in range 1..n_images (index + 1).
             self.current_images.insert(
-                self.curr_img1_pos - 1, self.init_images1[self.get_im1_index()]
+                self.curr_img1_pos - 1, self.init_images1[self.get_next_im1_index()]
             )
 
     def do_shuffle_images(self):
@@ -1448,11 +1448,11 @@ def create_image(opts: MontageOptions, image_num: int):
         image.paste(bg_image, (0, 0), mask=bg_mask)
 
     place_feature(
-        opts, opts.feature1, opts.get_feature1_index(), cell_size
+        opts, opts.feature1, opts.get_next_feature1_index(), cell_size
     )
 
     place_feature(
-        opts, opts.feature2, opts.get_feature2_index(), cell_size
+        opts, opts.feature2, opts.get_next_feature2_index(), cell_size
     )
 
     for row in range(nrows):

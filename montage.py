@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "220916.1"
+app_version = "220918.1"
 
 pub_version = "0.1.dev1"
 
@@ -273,7 +273,9 @@ class MontageOptions:
 
         if self.init_images1 and self.curr_img1_pos < 1:
             #  Image from [images-1] included in shuffle.
-            self.current_images.append(self.init_images1[self.get_next_im1_index()])
+            self.current_images.append(
+                self.init_images1[self.get_next_im1_index()]
+            )
 
         if self.do_shuffle_images():
             random.shuffle(self.current_images)
@@ -282,7 +284,8 @@ class MontageOptions:
             #  Image from [images-1] inserted at fixed position.
             #  Position is in range 1..n_images (index + 1).
             self.current_images.insert(
-                self.curr_img1_pos - 1, self.init_images1[self.get_next_im1_index()]
+                self.curr_img1_pos - 1,
+                self.init_images1[self.get_next_im1_index()]
             )
 
     def do_shuffle_images(self):

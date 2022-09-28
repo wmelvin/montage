@@ -62,6 +62,8 @@ An example of a **catalog image**.
 | --feature-2        |              | [feature-2]         | Attributes for second featured image as (col, ncols, row, nrows, file_name).                                                                                                                                                                   |
 | *(n/a)*            |              | [images-1]          | Begin list of image file names (one per line) from which one image is included in each succesive montage.                                                                                                                                      |
 | *(n/a)*            |              | img1_pos=           | Fixed cell number for image from [images-1] list (starting at 1 for top-left and counting first across columns).                                                                                                                               |
+| *(n/a)*            |              | img1_start=         | When creating multiple montage images, start placing images from [images-1] at this image number (count starts at 1).                                                                                                                          |
+| *(n/a)*            |              | img1_freq=          | When creating multiple montage images, place images from [images-1] at this frequency (for example, the value 2 will place an image from [images-1] in every other montage image).                                                             |
 
 ---
 

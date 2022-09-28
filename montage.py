@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "220918.1"
+app_version = "220928.1"
 
 pub_version = "0.1.dev1"
 
@@ -81,6 +81,8 @@ class MontageOptions:
         self.init_img1_pos = None
         self.curr_img1_pos = None
         self.img1_pos_index = -1
+        self.img1_start = 1
+        self.img1_freq = 1
 
         self.pool_index = -1
         self.pool_wrapped = False
@@ -219,14 +221,28 @@ class MontageOptions:
 
         assert self.rows
 
-    def _set_img1_pos(self):
+    def _use_images1(self, image_num: int) -> bool:
+        if self.init_images1:
+            return bool(
+                self.img1_start <= image_num
+                and (image_num - self.img1_start) % self.img1_freq == 0
+            )
+        else:
+            return False
+
+    def _set_img1_pos(self, image_num: int):
+        if not self._use_images1(image_num):
+            self.curr_img1_pos = 0
+            return
+
         if len(self.init_img1_pos) == 0:
             self.curr_img1_pos = 0
-        else:
-            self.img1_pos_index += 1
-            if len(self.init_img1_pos) <= self.img1_pos_index:
-                self.img1_pos_index = 0
-            self.curr_img1_pos = self.init_img1_pos[self.img1_pos_index]
+            return
+
+        self.img1_pos_index += 1
+        if len(self.init_img1_pos) <= self.img1_pos_index:
+            self.img1_pos_index = 0
+        self.curr_img1_pos = self.init_img1_pos[self.img1_pos_index]
 
     def get_ncols(self):
         if self.cols is None:
@@ -248,18 +264,18 @@ class MontageOptions:
         n -= self._feature_cell_count()
         return n
 
-    def _load_current_images(self):
+    def _load_current_images(self, image_num: int):
         self.current_images.clear()
         n_images = self._current_image_count()
 
-        self._set_img1_pos()
+        self._set_img1_pos(image_num)
 
         #  If img1_pos is greater than the number of images then
         #  ignore that option.
         if n_images < self.curr_img1_pos:
             self.curr_img1_pos = 0
 
-        if self.init_images1:
+        if self._use_images1(image_num):
             n_images -= 1
 
         no_wrap = "n" in self.shuffle_mode
@@ -271,8 +287,8 @@ class MontageOptions:
                     break
                 self.current_images.append(self.image_pool[ix])
 
-        if self.init_images1 and self.curr_img1_pos < 1:
-            #  Image from [images-1] included in shuffle.
+        if self._use_images1(image_num) and self.curr_img1_pos < 1:
+            #  Image from [images-1] in shuffle (not at fixed position).
             self.current_images.append(
                 self.init_images1[self.get_next_im1_index()]
             )
@@ -285,7 +301,7 @@ class MontageOptions:
             #  Position is in range 1..n_images (index + 1).
             self.current_images.insert(
                 self.curr_img1_pos - 1,
-                self.init_images1[self.get_next_im1_index()]
+                self.init_images1[self.get_next_im1_index()],
             )
 
     def do_shuffle_images(self):
@@ -338,7 +354,7 @@ class MontageOptions:
             at_col, use_ncols, at_row, use_nrows, feat.file_names
         )
 
-    def prepare(self):
+    def prepare(self, image_num: int):
         self._placements.clear()
         self._log.clear()
         self.set_cols()
@@ -352,7 +368,7 @@ class MontageOptions:
                 random.shuffle(self.image_pool)
         elif self.pool_wrapped and self.do_shuffle_images():
             random.shuffle(self.image_pool)
-        self._load_current_images()
+        self._load_current_images(image_num)
         self.pool_wrapped = False
         self.set_bg_index()
 
@@ -418,6 +434,8 @@ class MontageOptions:
         )
         s += f"do_zoom={self.do_zoom}\n"
         s += f"img1_pos={int_list_str(self.init_img1_pos)}\n"
+        s += f"img1_start={self.img1_start}\n"
+        s += f"img1_freq={self.img1_freq}\n"
         s += f"label_font={self.label_font}\n"
         s += f"label_size={self.label_size}\n"
         s += f"shuffle_mode={self.shuffle_mode}\n"
@@ -611,6 +629,10 @@ class MontageOptions:
 
             self.do_zoom = get_opt_bool(None, "do_zoom", settings)
 
+            self.img1_start = get_opt_int(1, "img1_start", settings)
+
+            self.img1_freq = get_opt_int(1, "img1_freq", settings)
+
             self.init_img1_pos = as_int_list(
                 get_opt_str(None, "img1_pos", settings)
             )
@@ -792,9 +814,7 @@ class MontageOptions:
             if args.feature_2 is not None:
                 self.init_feature2 = get_feature_args(args.feature_2)
 
-            self.init_images = [
-                i for i in args.images if i
-            ] + self.init_images
+            self.init_images = [i for i in args.images if i] + self.init_images
 
         self.init_images = expand_image_list(self.init_images)
 
@@ -888,7 +908,7 @@ def get_arguments(argv):
         nargs="*",
         action="store",
         help="Images files to include in the montage image."
-             " Multiple files can be specified.",
+        " Multiple files can be specified.",
     )
 
     ap.add_argument(
@@ -1016,7 +1036,7 @@ def get_arguments(argv):
         type=str,
         action="store",
         help="Attributes for first featured image as"
-             " (col, ncols, row, nrows, file_name).",
+        " (col, ncols, row, nrows, file_name).",
     )
 
     ap.add_argument(
@@ -1025,7 +1045,7 @@ def get_arguments(argv):
         type=str,
         action="store",
         help="Attributes for second featured image as"
-             " (col, ncols, row, nrows, file_name).",
+        " (col, ncols, row, nrows, file_name).",
     )
 
     ap.add_argument(
@@ -1086,7 +1106,7 @@ def get_arguments(argv):
         dest="do_quit",
         action="store_true",
         help="Quit immediately when there is an error. By default you are"
-             " asked to press Enter to acknowledge the error message.",
+        " asked to press Enter to acknowledge the error message.",
     )
 
     ap.add_argument(
@@ -1101,7 +1121,7 @@ def get_arguments(argv):
         dest="label_font",
         type=str,
         help="Font to use for file name label added to images. A file name"
-             " label is useful for making an image catalog.",
+        " label is useful for making an image catalog.",
     )
 
     ap.add_argument(
@@ -1224,9 +1244,7 @@ def as_int_list(text: str, default=None):
     if (text is None) or (len(text) == 0):
         return default
     else:
-        a = [
-            int(x) for x in [t.strip() for t in text.split(",")] if x
-        ]
+        a = [int(x) for x in [t.strip() for t in text.split(",")] if x]
         return a
 
 
@@ -1570,9 +1588,10 @@ def create_image(opts: MontageOptions, image_num: int):
 def create_montages(opts: MontageOptions):
     opts.check_options()
     n_images = opts.get_montages_count()
-    for i in range(0, n_images):
-        opts.prepare()
-        create_image(opts, i + 1)
+    for i in range(n_images):
+        image_num = i + 1
+        opts.prepare(image_num)
+        create_image(opts, image_num)
 
 
 def main(argv):

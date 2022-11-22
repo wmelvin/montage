@@ -53,7 +53,7 @@ An example of a **catalog image**.
 | --background-rgba  | -b           | background_rgba=    | Background color as red,green,blue,alpha.                                                                                                                                                                                                      |
 | --background-blur  |              | background_blur=    | Blur radius for background image (0 = none).                                                                                                                                                                                                   |
 | --background-image | -g           | [background-images] | Name of image file to use as the background image.                                                                                                                                                                                             |
-| --shuffle-mode     |              | shuffle_mode=       | Flags that control shuffling (random order):<br />i = images<br />b = background image<br />c = columns<br />r = rows<br />n = do not start over at beginning of list when all images have been used.<br />Example: --shuffle-mode=ib          |
+| --shuffle-mode     |              | shuffle_mode=       | Flags that control shuffling (random order):<br />i = images<br />b = background image<br />c = columns<br />r = rows<br />f = feature (where a feature has multiple images)<br />n = do not start over at beginning of list when all images have been used.<br />Example: --shuffle-mode=ib          |
 | --shuffle-count    |              | shuffle_count=      | Number of output files to create when using --shuffle-mode.                                                                                                                                                                                    |
 | --stamp-mode       |              | stamp_mode=         | Mode for adding a date_time stamp to the output file name:<br />0 = none<br />1 = at left of file name<br />2 = at right of file name<br />3 = at left of file name, include microseconds<br />4 = at right of file name, include microseconds |
 | --quit             | -q           |                     | Quit immediately when there is an error. By default you are asked to press Enter to acknowledge the error message.                                                                                                                             |
@@ -130,6 +130,7 @@ optional arguments:
                             b = background image
                             c = columns
                             r = rows
+                            f = feature (where a feature has multiple images)
                             n = do not start over at beginning of list
                                 when all images have been used.
                         Example: --shuffle-mode=ib

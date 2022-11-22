@@ -130,6 +130,7 @@ def test_feature_images_as_list(tmp_path, generated_images_path):
             border_width=10
             border_rgba=255,255,255,128
             shuffle_count=3
+            shuffle_mode=f
             write_opts=True
 
             # Put the images from the images-1 list in the center of the
@@ -160,6 +161,7 @@ def test_feature_images_as_list(tmp_path, generated_images_path):
             # Additional file names in a feature section are appended to
             # the list after the one in the 'file=' setting.
             {1}/gen-640x480-K.jpg
+            (skip)
             {1}/gen-640x480-L.jpg
 
             [images]

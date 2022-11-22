@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "220928.1"
+app_version = "221122.1"
 
 pub_version = "0.1.dev1"
 
@@ -350,8 +350,12 @@ class MontageOptions:
         assert at_row
         assert use_nrows
 
+        filenames = [] + feat.file_names
+        if "f" in self.shuffle_mode:
+            random.shuffle(filenames)
+
         return FeatureImage(
-            at_col, use_ncols, at_row, use_nrows, feat.file_names
+            at_col, use_ncols, at_row, use_nrows, filenames
         )
 
     def prepare(self, image_num: int):
@@ -554,8 +558,9 @@ class MontageOptions:
                     errors.append(f"Image file not found: '{file_name}'.")
 
         for file_name in self.init_images1:
-            if not Path(file_name).expanduser().resolve().exists():
-                errors.append(f"Image file not found: '{file_name}'.")
+            if not file_name.strip() == SKIP_MARKER:
+                if not Path(file_name).expanduser().resolve().exists():
+                    errors.append(f"Image file not found: '{file_name}'.")
 
         for file_name in self.init_bg_images:
             if not Path(file_name).expanduser().resolve().exists():
@@ -1060,6 +1065,7 @@ def get_arguments(argv):
                 b = background image
                 c = columns
                 r = rows
+                f = feature (where a feature has multiple images)
                 n = do not start over at beginning of list
                     when all images have been used.
             Example: --shuffle-mode=ib
@@ -1205,6 +1211,7 @@ def get_feature_args(feat_args):
         return FeatureImage(0, 0, 0, 0, [])
 
     fn = unquote(a[4])
+    fn = expand_image_list(fn)
 
     return FeatureImage(
         int(a[0]),
@@ -1228,6 +1235,8 @@ def get_opt_feat(section_content, default_to_none):
     for line in section_content:
         if "=" not in line:
             file_names.append(line)
+
+    file_names = expand_image_list(file_names)
 
     if (ncols == 0) and default_to_none:
         return None

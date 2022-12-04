@@ -14,7 +14,7 @@ MAX_SHUFFLE_COUNT = 999
 
 SKIP_MARKER = "(skip)"
 
-app_version = "221122.1"
+app_version = "221204.1"
 
 pub_version = "0.1.dev1"
 
@@ -585,7 +585,7 @@ class MontageOptions:
                 sys.stderr.write(f"\nERROR: File not found: {p}\n")
                 error_exit()
 
-            print(f"Load settings from '{file_name}'.")
+            print(f"Load settings from '{p.name}' in '{p.parent}'.")
 
             with open(p, "r") as f:
                 file_text = f.readlines()

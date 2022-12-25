@@ -24,13 +24,13 @@ app_title = f"montage.py - version {pub_version} (mod {app_version})"
 confirm_errors = True
 
 
-FeatureImage = namedtuple("FeatureImage", "col, ncols, row, nrows, file_names")
+FeatureAttributes = namedtuple("FeatureAttributes", "col, ncols, row, nrows, file_names")
 
 
 class FeaturedImage:
-    def __init__(self, initial_attr: FeatureImage):
-        self.initial_attr: FeatureImage = initial_attr
-        self.current_attr: FeatureImage = None
+    def __init__(self, initial_attr: FeatureAttributes):
+        self.initial_attr: FeatureAttributes = initial_attr
+        self.current_attr: FeatureAttributes = None
         self.feature_index = -1
 
     def get_next_feature_index(self):
@@ -153,7 +153,7 @@ class MontageOptions:
             if self.bg_index == len(self.init_bg_images):
                 self.bg_index = 0
 
-    def get_feature_filename(self, feature: FeatureImage, index: int):
+    def get_feature_filename(self, feature: FeatureAttributes, index: int):
         if index < len(feature.file_names):
             return feature.file_names[index]
         else:
@@ -318,7 +318,7 @@ class MontageOptions:
         print(message)
         self._log.append(message)
 
-    def prepare_feature(self, feat: FeatureImage) -> FeatureImage:
+    def prepare_feature(self, feat: FeatureAttributes) -> FeatureAttributes:
         if feat.ncols == 0 or feat.nrows == 0:
             return feat
 
@@ -352,7 +352,7 @@ class MontageOptions:
         if "f" in self.shuffle_mode:
             random.shuffle(filenames)
 
-        return FeatureImage(at_col, use_ncols, at_row, use_nrows, filenames)
+        return FeatureAttributes(at_col, use_ncols, at_row, use_nrows, filenames)
 
     def prepare(self, image_num: int):
         self._placements.clear()
@@ -500,7 +500,7 @@ class MontageOptions:
                     for i in self._log:
                         f.write(f"{i}\n")
 
-    def check_feature(self, feat_num: int, feat_attr: FeatureImage):
+    def check_feature(self, feat_num: int, feat_attr: FeatureAttributes):
         errors = []
         numeric_attrs = [
             feat_attr.col,
@@ -634,7 +634,7 @@ class MontageOptions:
             )
 
             for feat_num in range(1, MAX_FEATURED_IMAGES + 1):
-                temp_feat: FeatureImage = get_opt_feat(
+                temp_feat: FeatureAttributes = get_opt_feat(
                     get_option_entries(f"[feature-{feat_num}]", file_text),
                     True,
                 )
@@ -1186,7 +1186,7 @@ def get_opt_bool(default, opt_name, content):
 
 def get_feature_args(feat_args):
     if feat_args is None:
-        return FeatureImage(0, 0, 0, 0, [])
+        return FeatureAttributes(0, 0, 0, 0, [])
 
     a = feat_args.strip("()").split(",")
 
@@ -1195,19 +1195,19 @@ def get_feature_args(feat_args):
             "WARNING: Ignoring invalid feature attributes. "
             "Expected five values separated by commas."
         )
-        return FeatureImage(0, 0, 0, 0, [])
+        return FeatureAttributes(0, 0, 0, 0, [])
 
     if any(not x.strip().isdigit() for x in a[:-1]):
         print(
             "WARNING: Ignoring invalid feature attributes. "
             "Expected first four numeric values are numeric."
         )
-        return FeatureImage(0, 0, 0, 0, [])
+        return FeatureAttributes(0, 0, 0, 0, [])
 
     fn = unquote(a[4])
     fn = expand_image_list(fn)
 
-    return FeatureImage(
+    return FeatureAttributes(
         int(a[0]),
         int(a[1]),
         int(a[2]),
@@ -1235,7 +1235,7 @@ def get_opt_feat(section_content, default_to_none):
     if (ncols == 0) and default_to_none:
         return None
     else:
-        return FeatureImage(col, ncols, row, nrows, file_names)
+        return FeatureAttributes(col, ncols, row, nrows, file_names)
 
 
 def as_int_list(text: str, default=None):
@@ -1311,7 +1311,7 @@ def get_rgba(default, arg_str):
 
 
 def place_feature(
-    opts: MontageOptions, feat_attr: FeatureImage, image_index, cell_size
+    opts: MontageOptions, feat_attr: FeatureAttributes, image_index, cell_size
 ):
     if feat_attr.nrows and feat_attr.ncols:
         x = opts.margin + ((feat_attr.col - 1) * cell_size[0]) + opts.padding
@@ -1321,7 +1321,7 @@ def place_feature(
         opts.add_placement(x, y, w, h, feat_attr.file_names[image_index])
 
 
-def outside_feat(col_index, row_index, feat_attr: FeatureImage):
+def outside_feat(col_index, row_index, feat_attr: FeatureAttributes):
     if feat_attr.nrows and feat_attr.ncols:
         a = (col_index + 1) in range(
             feat_attr.col, feat_attr.col + feat_attr.ncols

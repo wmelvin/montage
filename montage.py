@@ -11,20 +11,33 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 from pathlib import Path
 
 MAX_SHUFFLE_COUNT = 999
+MAX_FEATURED_IMAGES = 4
 
 SKIP_MARKER = "(skip)"
 
-app_version = "221204.1"
+app_version = "221224.1"
 
 pub_version = "0.1.dev1"
 
 app_title = f"montage.py - version {pub_version} (mod {app_version})"
 
-# global confirm_errors
 confirm_errors = True
 
 
 FeatureImage = namedtuple("FeatureImage", "col, ncols, row, nrows, file_names")
+
+
+class FeaturedImage:
+    def __init__(self, initial_attr: FeatureImage):
+        self.initial_attr: FeatureImage = initial_attr
+        self.current_attr: FeatureImage = None
+        self.feature_index = -1
+
+    def get_next_feature_index(self):
+        self.feature_index += 1
+        if len(self.current_attr.file_names) <= self.feature_index:
+            self.feature_index = 0
+        return self.feature_index
 
 
 class Placement:
@@ -63,10 +76,6 @@ class MontageOptions:
         self.cols = None
         self.margin = None
         self.padding = None
-        self.init_feature1 = None
-        self.init_feature2 = None
-        self.feature1 = None
-        self.feature2 = None
         self.bg_rgba = None
         self.bg_blur = None
         self.shuffle_mode = None
@@ -90,8 +99,8 @@ class MontageOptions:
         self.im1_index = -1
         self.col_index = -1
         self.row_index = -1
-        self.feature1_index = -1
-        self.feature2_index = -1
+
+        self.featured_images: List[FeaturedImage] = []
 
         self.init_images = []
         #  Initial list of image file names, as loaded from the
@@ -143,18 +152,6 @@ class MontageOptions:
             self.bg_index += 1
             if self.bg_index == len(self.init_bg_images):
                 self.bg_index = 0
-
-    def get_next_feature1_index(self):
-        self.feature1_index += 1
-        if len(self.feature1.file_names) <= self.feature1_index:
-            self.feature1_index = 0
-        return self.feature1_index
-
-    def get_next_feature2_index(self):
-        self.feature2_index += 1
-        if len(self.feature2.file_names) <= self.feature2_index:
-            self.feature2_index = 0
-        return self.feature2_index
 
     def get_feature_filename(self, feature: FeatureImage, index: int):
         if index < len(feature.file_names):
@@ -255,8 +252,9 @@ class MontageOptions:
         return self.rows
 
     def _feature_cell_count(self):
-        n = self.feature1.ncols * self.feature1.nrows
-        n += self.feature2.ncols * self.feature2.nrows
+        n = 0
+        for feat in self.featured_images:
+            n += feat.current_attr.ncols * feat.current_attr.nrows
         return n
 
     def _current_image_count(self):
@@ -354,17 +352,17 @@ class MontageOptions:
         if "f" in self.shuffle_mode:
             random.shuffle(filenames)
 
-        return FeatureImage(
-            at_col, use_ncols, at_row, use_nrows, filenames
-        )
+        return FeatureImage(at_col, use_ncols, at_row, use_nrows, filenames)
 
     def prepare(self, image_num: int):
         self._placements.clear()
         self._log.clear()
         self.set_cols()
         self.set_rows()
-        self.feature1 = self.prepare_feature(self.init_feature1)
-        self.feature2 = self.prepare_feature(self.init_feature2)
+
+        for feat in self.featured_images:
+            feat.current_attr = self.prepare_feature(feat.initial_attr)
+
         if len(self.image_pool) == 0:  # First run.
             self.pool_index = -1
             self.image_pool = [] + self.init_images
@@ -447,23 +445,17 @@ class MontageOptions:
         s += f"stamp_mode={self.stamp_mode}\n"
         s += f"write_opts={self.write_opts}\n"
 
-        s += "\n[feature-1]\n"
-        s += f"file={qs(self.get_feature_filename(self.feature1, 0))}\n"
-        s += f"column={self.feature1.col}\n"
-        s += f"row={self.feature1.row}\n"
-        s += f"num_columns={self.feature1.ncols}\n"
-        s += f"num_rows={self.feature1.nrows}\n"
-        for i in self.feature1.file_names[1:]:
-            s += f"{qs(i)}\n"
-
-        s += "\n[feature-2]\n"
-        s += f"file={qs(self.get_feature_filename(self.feature2, 0))}\n"
-        s += f"column={self.feature2.col}\n"
-        s += f"row={self.feature2.row}\n"
-        s += f"num_columns={self.feature2.ncols}\n"
-        s += f"num_rows={self.feature2.nrows}\n"
-        for i in self.feature2.file_names[1:]:
-            s += f"{qs(i)}\n"
+        for feat_num, feat in enumerate(self.featured_images, start=1):
+            s += f"\n[feature-{feat_num}]\n"
+            s += (
+                f"file={qs(self.get_feature_filename(feat.current_attr, 0))}\n"
+            )
+            s += f"column={feat.current_attr.col}\n"
+            s += f"row={feat.current_attr.row}\n"
+            s += f"num_columns={feat.current_attr.ncols}\n"
+            s += f"num_rows={feat.current_attr.nrows}\n"
+            for i in feat.current_attr.file_names[1:]:
+                s += f"{qs(i)}\n"
 
         s += "\n[background-images]\n"
         for i in self.init_bg_images:
@@ -568,9 +560,8 @@ class MontageOptions:
                     f"Background image file not found: '{file_name}'."
                 )
 
-        errors += self.check_feature(1, self.init_feature1)
-
-        errors += self.check_feature(2, self.init_feature2)
+        for feat_num, feat in enumerate(self.featured_images, start=1):
+            errors += self.check_feature(feat_num, feat.initial_attr)
 
         if errors:
             print("\nCANNOT PROCEED")
@@ -642,13 +633,13 @@ class MontageOptions:
                 get_opt_str(None, "img1_pos", settings)
             )
 
-            self.init_feature1 = get_opt_feat(
-                get_option_entries("[feature-1]", file_text), True
-            )
-
-            self.init_feature2 = get_opt_feat(
-                get_option_entries("[feature-2]", file_text), True
-            )
+            for feat_num in range(1, MAX_FEATURED_IMAGES + 1):
+                temp_feat: FeatureImage = get_opt_feat(
+                    get_option_entries(f"[feature-{feat_num}]", file_text),
+                    True,
+                )
+                if temp_feat:
+                    self.featured_images.append(FeaturedImage(temp_feat))
 
             self.init_images += [
                 unquote(i) for i in get_option_entries("[images]", file_text)
@@ -730,12 +721,6 @@ class MontageOptions:
         if self.init_img1_pos is None:
             self.init_img1_pos = []
 
-        if self.init_feature1 is None:
-            self.init_feature1 = get_opt_feat("", False)
-
-        if self.init_feature2 is None:
-            self.init_feature2 = get_opt_feat("", False)
-
     def load(self, args, defaults: MontageDefaults, settings_file=None):
         if args is None and settings_file is None:
             sys.stderr.write(
@@ -813,11 +798,20 @@ class MontageOptions:
                 if args.do_zoom:
                     self.do_zoom = True
 
+            #  Only support 2 featured images via command-line args.
+            #  TODO: Accept more than two?
+
             if args.feature_1 is not None:
-                self.init_feature1 = get_feature_args(args.feature_1)
+                assert len(self.featured_images) < MAX_FEATURED_IMAGES
+                self.featured_images.append(
+                    FeaturedImage(get_feature_args(args.feature_1))
+                )
 
             if args.feature_2 is not None:
-                self.init_feature2 = get_feature_args(args.feature_2)
+                assert len(self.featured_images) < MAX_FEATURED_IMAGES
+                self.featured_images.append(
+                    FeaturedImage(get_feature_args(args.feature_2))
+                )
 
             self.init_images = [i for i in args.images if i] + self.init_images
 
@@ -1339,10 +1333,11 @@ def outside_feat(col_index, row_index, feat_attr: FeatureImage):
     return True
 
 
-def outside_feature(col_index, row_index, feat_1, feat_2):
-    a = outside_feat(col_index, row_index, feat_1)
-    b = outside_feat(col_index, row_index, feat_2)
-    return a and b
+def outside_feature(col_index, row_index, feat_imgs: List[FeaturedImage]):
+    for feat in feat_imgs:
+        if not outside_feat(col_index, row_index, feat.current_attr):
+            return False
+    return True
 
 
 def get_new_size_zoom(current_size, target_size):
@@ -1477,17 +1472,14 @@ def create_image(opts: MontageOptions, image_num: int):
 
         image.paste(bg_image, (0, 0), mask=bg_mask)
 
-    place_feature(
-        opts, opts.feature1, opts.get_next_feature1_index(), cell_size
-    )
-
-    place_feature(
-        opts, opts.feature2, opts.get_next_feature2_index(), cell_size
-    )
+    for feat in opts.featured_images:
+        place_feature(
+            opts, feat.current_attr, feat.get_next_feature_index(), cell_size
+        )
 
     for row in range(nrows):
         for col in range(ncols):
-            if outside_feature(col, row, opts.feature1, opts.feature2):
+            if outside_feature(col, row, opts.featured_images):
                 x = opts.margin + (col * cell_w) + opts.padding
                 y = opts.margin + (row * cell_h) + opts.padding
                 opts.add_placement(x, y, inner_w, inner_h)

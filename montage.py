@@ -15,7 +15,7 @@ MAX_FEATURED_IMAGES = 4
 
 SKIP_MARKER = "(skip)"
 
-app_version = "221224.1"
+app_version = "221227.1"
 
 pub_version = "0.1.dev1"
 
@@ -24,7 +24,9 @@ app_title = f"montage.py - version {pub_version} (mod {app_version})"
 confirm_errors = True
 
 
-FeatureAttributes = namedtuple("FeatureAttributes", "col, ncols, row, nrows, file_names")
+FeatureAttributes = namedtuple(
+    "FeatureAttributes", "col, ncols, row, nrows, file_names"
+)
 
 
 class FeaturedImage:
@@ -352,7 +354,9 @@ class MontageOptions:
         if "f" in self.shuffle_mode:
             random.shuffle(filenames)
 
-        return FeatureAttributes(at_col, use_ncols, at_row, use_nrows, filenames)
+        return FeatureAttributes(
+            at_col, use_ncols, at_row, use_nrows, filenames
+        )
 
     def prepare(self, image_num: int):
         self._placements.clear()
@@ -1386,7 +1390,17 @@ def add_label(
     assert opts.label_font
     assert opts.label_size
 
-    font = ImageFont.truetype(opts.label_font, opts.label_size)
+    try:
+        if opts.label_font.lower().endswith(".ttf"):
+            font = ImageFont.truetype(opts.label_font, opts.label_size)
+        else:
+            font = ImageFont.load(opts.label_font)
+    except OSError:
+        print(f"WARNING: Cannot load font '{opts.label_font}'.")
+        return
+    except Exception as ex:
+        print(f"EXCEPTION: '{str(ex)}'")
+        raise ex
 
     font_size = font.getsize("M")
 

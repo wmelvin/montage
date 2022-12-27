@@ -1398,9 +1398,6 @@ def add_label(
     except OSError:
         print(f"WARNING: Cannot load font '{opts.label_font}'.")
         return
-    except Exception as ex:
-        print(f"EXCEPTION: '{str(ex)}'")
-        raise ex
 
     font_size = font.getsize("M")
 

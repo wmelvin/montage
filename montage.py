@@ -12,16 +12,16 @@ from pathlib import Path
 
 MAX_SHUFFLE_COUNT = 999
 MAX_FEATURED_IMAGES = 4
-
 SKIP_MARKER = "(skip)"
+DEFAULT_ERRLOG = "montage-errors.txt"
 
-app_version = "221227.1"
+app_version = "230111.1"
 
 pub_version = "0.1.dev1"
 
 app_title = f"montage.py - version {pub_version} (mod {app_version})"
 
-confirm_errors = True
+errlog = Path.cwd().joinpath(DEFAULT_ERRLOG)
 
 
 FeatureAttributes = namedtuple(
@@ -568,17 +568,13 @@ class MontageOptions:
             errors += self.check_feature(feat_num, feat.initial_attr)
 
         if errors:
-            print("\nCANNOT PROCEED")
-            for message in errors:
-                sys.stderr.write(f"{message}\n")
-            error_exit()
+            error_exit("CANNOT PROCEED", error_list=errors)
 
     def _load_from_file(self, file_name):
         if file_name is not None:
             p = Path(file_name).expanduser().resolve()
             if not p.exists():
-                sys.stderr.write(f"\nERROR: File not found: {p}\n")
-                error_exit()
+                error_exit(f"ERROR: File not found: {p}")
 
             print(f"Load settings from '{p.name}' in '{p.parent}'.")
 
@@ -727,10 +723,7 @@ class MontageOptions:
 
     def load(self, args, defaults: MontageDefaults, settings_file=None):
         if args is None and settings_file is None:
-            sys.stderr.write(
-                "\nERROR: No args object, and no settings file name.\n"
-            )
-            error_exit()
+            error_exit("ERROR: No args object and no settings file name.")
 
         if settings_file is None:
             self._load_from_file(args.settings_file)
@@ -833,12 +826,31 @@ class MontageOptions:
 # ----------------------------------------------------------------------
 
 
-def error_exit():
+def error_exit(error_message: str, error_list: List[str] = None):
+    errs = []
+    errs.append(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M')}]")
+    errs.append(f"HALTED {app_title}")
+
+    if error_message:
+        errs.append(error_message)
+        print("")
+        sys.stderr.write(f"{error_message}\n")
+
+    if error_list:
+        print("")
+        for s in error_list:
+            errs.append(s)
+            sys.stderr.write(f"{s}\n")
+
     print("*" * 70)
-    if confirm_errors:
-        input("ERRORS: Press [Enter]. ")
-    else:
-        print("Halted due to errors.")
+    print("Halted due to errors.")
+
+    if errlog:
+        print(f"\nWriting '{errlog}'.\n")
+        with open(errlog, "a") as t:
+            for e in errs:
+                t.write(f"{e}\n")
+
     sys.exit(1)
 
 
@@ -855,8 +867,7 @@ def unquote(text: str) -> str:
 def get_list_from_file(file_name):
     p = Path(file_name).expanduser().resolve()
     if not p.exists():
-        sys.stderr.write(f"\nERROR: File not found: {p}\n")
-        error_exit()
+        error_exit(f"ERROR: File not found: {p}")
 
     result = []
 
@@ -1105,12 +1116,18 @@ def get_arguments(argv):
     )
 
     ap.add_argument(
-        "-q",
-        "--quit",
-        dest="do_quit",
+        "--error-log",
+        dest="error_log",
+        type=str,
+        help="Change the file name used for the error log file. "
+        f"By default the error log is named '{DEFAULT_ERRLOG}'.",
+    )
+
+    ap.add_argument(
+        "--no-log",
+        dest="no_log",
         action="store_true",
-        help="Quit immediately when there is an error. By default you are"
-        " asked to press Enter to acknowledge the error message.",
+        help="Do not write a log file when there are errors.",
     )
 
     ap.add_argument(
@@ -1613,9 +1630,19 @@ def main(argv):
 
     args = get_arguments(argv)
 
-    if args.do_quit:
-        global confirm_errors
-        confirm_errors = False
+    global errlog
+    if args.no_log:
+        errlog = None
+    elif args.error_log:
+        #  Override default error log per arg.
+        altlog = Path(args.error_log).expanduser().resolve()
+        if not altlog.parent.exists():
+            error_exit(
+                f"Cannot find directory for log file: '{altlog.parent}'"
+            )
+        if altlog.exists() and not altlog.is_file():
+            error_exit(f"Not a file: '{altlog}'")
+        errlog = altlog
 
     opts = MontageOptions()
 

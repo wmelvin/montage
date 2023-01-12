@@ -82,8 +82,8 @@ usage: montage.py [-h] [-s SETTINGS_FILE] [-o OUTPUT_FILE] [-d OUTPUT_DIR]
                   [--background-blur BG_BLUR] [--feature-1 FEATURE_1]
                   [--feature-2 FEATURE_2] [--shuffle-mode SHUFFLE_MODE]
                   [--shuffle-count SHUFFLE_COUNT] [--stamp-mode STAMP_MODE]
-                  [-z] [-q] [--write-opts] [--label-font LABEL_FONT]
-                  [--label-size LABEL_SIZE]
+                  [-z] [--error-log ERROR_LOG] [--no-log] [--write-opts]
+                  [--label-font LABEL_FONT] [--label-size LABEL_SIZE]
                   [images [images ...]]
 
 Create an image montage given a list of image files.
@@ -144,7 +144,9 @@ optional arguments:
                             3 = at left of file name, include microseconds
                             4 = at right of file name, include microseconds
   -z, --zoom            Zoom images to fill instead of fitting to frame.
-  -q, --quit            Quit immediately when there is an error. By default you are asked to press Enter to acknowledge the error message.
+  --error-log ERROR_LOG
+                        Change the file name used for the error log file. By default the error log is named 'montage-errors.txt'.
+  --no-log              Do not write a log file when there are errors.
   --write-opts          Write the option settings to a file.
   --label-font LABEL_FONT
                         Font to use for file name label added to images. A file name label is useful for making an image catalog.

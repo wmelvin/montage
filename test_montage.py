@@ -1,7 +1,7 @@
 import pytest
+import os
 
 from importlib import reload
-# from pathlib import Path
 from textwrap import dedent
 
 import montage
@@ -233,3 +233,72 @@ def test_feature_adjusts_to_bounds(tmp_path, generated_images_path):
     result = montage.main(args)
     assert result == 0
     assert len(list(out_path.glob("**/*.jpg"))) == 5, "Should create 5 files."
+
+
+def test_error_exit(tmp_path, capsys):
+    assert tmp_path.exists()
+    os.chdir(tmp_path)
+    reload(montage)
+    with pytest.raises(SystemExit):
+        montage.error_exit("Oops!", error_list=["my", "bad"])
+    captured = capsys.readouterr()
+    assert "Oops!" in captured.err
+    assert "my" in captured.err
+    assert "bad" in captured.err
+    assert (tmp_path / "montage-errors.txt").exists()
+
+
+def test_default_error_log(tmp_path, capsys):
+    assert tmp_path.exists()
+    os.chdir(tmp_path)
+    reload(montage)
+    log_path = tmp_path / montage.DEFAULT_ERRLOG
+    args = [
+        "montage.py",
+        "-s",
+        "settings-file-does-not-exist",
+    ]
+    with pytest.raises(SystemExit):
+        montage.main(args)
+    captured = capsys.readouterr()
+    assert "settings-file-does-not-exist" in captured.err
+    assert log_path.exists()
+    assert "settings-file-does-not-exist" in log_path.read_text()
+
+
+def test_alt_error_log(tmp_path, capsys):
+    assert tmp_path.exists()
+    os.chdir(tmp_path)
+    reload(montage)
+    log_path = tmp_path / "alt-error-log.txt"
+    args = [
+        "montage.py",
+        "-s",
+        "settings-file-does-not-exist",
+        "--error-log",
+        str(log_path),
+    ]
+    with pytest.raises(SystemExit):
+        montage.main(args)
+    captured = capsys.readouterr()
+    assert "settings-file-does-not-exist" in captured.err
+    assert log_path.exists()
+    assert "settings-file-does-not-exist" in log_path.read_text()
+
+
+def test_no_error_log(tmp_path, capsys):
+    assert tmp_path.exists()
+    os.chdir(tmp_path)
+    reload(montage)
+    log_path = tmp_path / montage.DEFAULT_ERRLOG
+    args = [
+        "montage.py",
+        "-s",
+        "settings-file-does-not-exist",
+        "--no-log",
+    ]
+    with pytest.raises(SystemExit):
+        montage.main(args)
+    captured = capsys.readouterr()
+    assert "settings-file-does-not-exist" in captured.err
+    assert not log_path.exists()

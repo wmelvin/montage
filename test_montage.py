@@ -150,7 +150,7 @@ def test_feature_images_as_list(tmp_path, generated_images_path):
             # a separate line.
 
             [feature-2]
-            file={1}/gen-480x640-E.jpg
+            file="{1}/gen-480x640-E.jpg"
             column=5
             row=2
             num_columns=2
@@ -162,7 +162,7 @@ def test_feature_images_as_list(tmp_path, generated_images_path):
             # the list after the one in the 'file=' setting.
             {1}/gen-640x480-K.jpg
             (skip)
-            {1}/gen-640x480-L.jpg
+            "{1}/gen-640x480-L.jpg"
 
             [images]
             {1}/gen-400x400-A.jpg

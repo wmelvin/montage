@@ -15,7 +15,7 @@ MAX_FEATURED_IMAGES = 4
 SKIP_MARKER = "(skip)"
 DEFAULT_ERRLOG = "montage-errors.txt"
 
-app_version = "230111.1"
+app_version = "230331.1"
 
 pub_version = "0.1.dev1"
 
@@ -1249,7 +1249,7 @@ def get_opt_feat(section_content, default_to_none):
     #  Get any additional file names in Feature section.
     for line in section_content:
         if "=" not in line:
-            file_names.append(line)
+            file_names.append(unquote(line))
 
     file_names = expand_image_list(file_names)
 

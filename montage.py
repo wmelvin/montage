@@ -15,7 +15,7 @@ MAX_FEATURED_IMAGES = 4
 SKIP_MARKER = "(skip)"
 DEFAULT_ERRLOG = "montage-errors.txt"
 
-app_version = "230331.1"
+app_version = "230611.1"
 
 pub_version = "0.1.dev1"
 
@@ -93,7 +93,10 @@ class MontageOptions:
         self.curr_img1_pos = None
         self.img1_pos_index = -1
         self.img1_start = 1
-        self.img1_freq = 1
+        self.init_img1_freq = None
+        self.img1_freq_index = -1
+        self.img1_next = 1
+        self.do_img1 = False
 
         self.pool_index = -1
         self.pool_wrapped = False
@@ -220,22 +223,36 @@ class MontageOptions:
 
         assert self.rows
 
-    def _use_images1(self, image_num: int) -> bool:
-        if self.init_images1:
-            return bool(
-                self.img1_start <= image_num
-                and (image_num - self.img1_start) % self.img1_freq == 0
-            )
-        else:
-            return False
+    def _get_img1_freq(self):
+        self.img1_freq_index += 1
+        if len(self.init_img1_freq) <= self.img1_freq_index:
+            self.img1_freq_index = 0
+        return self.init_img1_freq[self.img1_freq_index]
 
     def _set_img1_pos(self, image_num: int):
-        if not self._use_images1(image_num):
-            self.curr_img1_pos = 0
+        self.do_img1 = False
+        self.curr_img1_pos = 0
+
+        if not self.init_images1:
+            #  Nothing in [images-1] section.
             return
 
+        if image_num < self.img1_start:
+            #  Not yet at starting image number.
+            return
+
+        self.img1_next -= 1
+        if self.img1_next == 0:
+            self.img1_next = self._get_img1_freq()
+        else:
+            #  Current image number is not the next image-1 based on
+            #  frequency list.
+            return
+
+        self.do_img1 = True
+
         if len(self.init_img1_pos) == 0:
-            self.curr_img1_pos = 0
+            #  No position specified. Will be placed according to shuffle.
             return
 
         self.img1_pos_index += 1
@@ -275,7 +292,7 @@ class MontageOptions:
         if n_images < self.curr_img1_pos:
             self.curr_img1_pos = 0
 
-        if self._use_images1(image_num):
+        if self.do_img1:
             n_images -= 1
 
         no_wrap = "n" in self.shuffle_mode
@@ -287,7 +304,7 @@ class MontageOptions:
                     break
                 self.current_images.append(self.image_pool[ix])
 
-        if self._use_images1(image_num) and self.curr_img1_pos < 1:
+        if self.do_img1 and self.curr_img1_pos < 1:
             #  Image from [images-1] in shuffle (not at fixed position).
             self.current_images.append(
                 self.init_images1[self.get_next_im1_index()]
@@ -441,7 +458,7 @@ class MontageOptions:
         s += f"do_zoom={self.do_zoom}\n"
         s += f"img1_pos={int_list_str(self.init_img1_pos)}\n"
         s += f"img1_start={self.img1_start}\n"
-        s += f"img1_freq={self.img1_freq}\n"
+        s += f"img1_freq={int_list_str(self.init_img1_freq)}\n"
         s += f"label_font={self.label_font}\n"
         s += f"label_size={self.label_size}\n"
         s += f"shuffle_mode={self.shuffle_mode}\n"
@@ -627,7 +644,9 @@ class MontageOptions:
 
             self.img1_start = get_opt_int(1, "img1_start", settings)
 
-            self.img1_freq = get_opt_int(1, "img1_freq", settings)
+            self.init_img1_freq = as_int_list(
+                get_opt_str(None, "img1_freq", settings)
+            )
 
             self.init_img1_pos = as_int_list(
                 get_opt_str(None, "img1_pos", settings)
@@ -717,6 +736,9 @@ class MontageOptions:
 
         if self.do_zoom is None:
             self.do_zoom = False
+
+        if self.init_img1_freq is None:
+            self.init_img1_freq = [1]
 
         if self.init_img1_pos is None:
             self.init_img1_pos = []

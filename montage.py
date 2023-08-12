@@ -15,7 +15,7 @@ MAX_FEATURED_IMAGES = 4
 SKIP_MARKER = "(skip)"
 DEFAULT_ERRLOG = "montage-errors.txt"
 
-app_version = "230611.1"
+app_version = "230722.1"
 
 pub_version = "0.1.dev1"
 
@@ -466,17 +466,28 @@ class MontageOptions:
         s += f"stamp_mode={self.stamp_mode}\n"
         s += f"write_opts={self.write_opts}\n"
 
-        for feat_num, feat in enumerate(self.featured_images, start=1):
-            s += f"\n[feature-{feat_num}]\n"
-            s += (
-                f"file={qs(self.get_feature_filename(feat.current_attr, 0))}\n"
-            )
-            s += f"column={feat.current_attr.col}\n"
-            s += f"row={feat.current_attr.row}\n"
-            s += f"num_columns={feat.current_attr.ncols}\n"
-            s += f"num_rows={feat.current_attr.nrows}\n"
-            for i in feat.current_attr.file_names[1:]:
-                s += f"{qs(i)}\n"
+        if self.featured_images:
+            for feat_num, feat in enumerate(self.featured_images, start=1):
+                s += f"\n[feature-{feat_num}]\n"
+                s += (
+                    "file="
+                    f"{qs(self.get_feature_filename(feat.current_attr, 0))}\n"
+                )
+                s += f"column={feat.current_attr.col}\n"
+                s += f"row={feat.current_attr.row}\n"
+                s += f"num_columns={feat.current_attr.ncols}\n"
+                s += f"num_rows={feat.current_attr.nrows}\n"
+                for i in feat.current_attr.file_names[1:]:
+                    s += f"{qs(i)}\n"
+        else:
+            #  Add a [Feature-1] template when the current montage has no
+            #  featured images.
+            s += "\n# [feature-1]\n"
+            s += "# file=\n"
+            s += "# column=\n"
+            s += "# row=\n"
+            s += "# num_columns=\n"
+            s += "# num_rows=\n"
 
         s += "\n[background-images]\n"
         for i in self.init_bg_images:

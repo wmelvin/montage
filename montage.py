@@ -15,7 +15,7 @@ MAX_FEATURED_IMAGES = 4
 SKIP_MARKER = "(skip)"
 DEFAULT_ERRLOG = "montage-errors.txt"
 
-app_version = "230722.1"
+app_version = "231031.1"
 
 pub_version = "0.1.dev1"
 
@@ -1502,6 +1502,8 @@ def create_image(opts: MontageOptions, image_num: int):
         bg_filename = str(Path(bg_filename).expanduser().resolve())
 
         bg_image = Image.open(bg_filename)
+
+        bg_image = ImageOps.exif_transpose(bg_image)
 
         opts.log_add(f"(original) bg_image.size='{bg_image.size}")
 

@@ -15,11 +15,9 @@ MAX_FEATURED_IMAGES = 4
 SKIP_MARKER = "(skip)"
 DEFAULT_ERRLOG = "montage-errors.txt"
 
-app_version = "231031.1"
+__version__ = "0.1.dev2"
 
-pub_version = "0.1.dev1"
-
-app_title = f"montage.py - version {pub_version} (mod {app_version})"
+app_title = f"montage.py (v{__version__})"
 
 errlog = Path.cwd().joinpath(DEFAULT_ERRLOG)
 
@@ -944,7 +942,7 @@ def warn_old_settings(settings):
                 )
 
 
-def get_arguments(argv):
+def get_arguments(arglist=None):
     ap = argparse.ArgumentParser(
         formatter_class=argparse.RawTextHelpFormatter,
         description="Create an image montage given a list of image files.",
@@ -1187,7 +1185,7 @@ def get_arguments(argv):
 
     # TODO: Add details to help messages.
 
-    return ap.parse_args(argv[1:])
+    return ap.parse_args(arglist)
 
 
 def get_option_entries(opt_section, opt_content):
@@ -1658,12 +1656,12 @@ def create_montages(opts: MontageOptions):
         create_image(opts, image_num)
 
 
-def main(argv):
+def main(arglist=None):
     print(f"\n{app_title}\n")
 
     defaults = MontageDefaults()
 
-    args = get_arguments(argv)
+    args = get_arguments(arglist)
 
     global errlog
     if args.no_log:
@@ -1691,4 +1689,4 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    sys.exit(main())

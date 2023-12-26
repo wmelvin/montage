@@ -9,7 +9,7 @@ import make_test_images
 
 
 def test_montage_help(capsys):
-    args = ["montage.py", "-h"]
+    args = ["-h"]
     with pytest.raises(SystemExit):
         montage.main(args)
 
@@ -20,7 +20,7 @@ def test_montage_help(capsys):
     #  rather than "usage: montage.py..."
 
     assert "[-h]" in captured.out
-    assert "montage.py - version" in captured.out
+    assert "montage.py (v" in captured.out
 
 
 @pytest.fixture(scope="module")
@@ -103,7 +103,7 @@ def test_feature_images(tmp_path, generated_images_path):
             """
         ).format(str(out_path), str(generated_images_path))
     )
-    args = ["montage.py", "-s", str(opt_file)]
+    args = ["-s", str(opt_file)]
     result = montage.main(args)
     assert result == 0
     assert len(list(out_path.glob("**/*.jpg"))) == 3, "Should create 3 files."
@@ -178,7 +178,7 @@ def test_feature_images_as_list(tmp_path, generated_images_path):
             """
         ).format(str(out_path), str(generated_images_path))
     )
-    args = ["montage.py", "-s", str(opt_file)]
+    args = ["-s", str(opt_file)]
     result = montage.main(args)
     assert result == 0
     assert len(list(out_path.glob("**/*.jpg"))) == 3, "Should create 3 files."
@@ -229,7 +229,7 @@ def test_feature_adjusts_to_bounds(tmp_path, generated_images_path):
             """
         ).format(str(out_path), str(generated_images_path))
     )
-    args = ["montage.py", "-s", str(opt_file)]
+    args = ["-s", str(opt_file)]
     result = montage.main(args)
     assert result == 0
     assert len(list(out_path.glob("**/*.jpg"))) == 5, "Should create 5 files."

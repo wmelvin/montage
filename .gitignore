@@ -5,6 +5,7 @@ notes-private.txt
 # Python.
 venv/
 __pycache__/
+.python-version
 
 # Tools config.
 .idea/

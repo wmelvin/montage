@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 
 import argparse
 import random
@@ -10,12 +9,12 @@ from typing import List
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 from pathlib import Path
 
+from montage.__about__ import __version__
+
 MAX_SHUFFLE_COUNT = 999
 MAX_FEATURED_IMAGES = 4
 SKIP_MARKER = "(skip)"
 DEFAULT_ERRLOG = "montage-errors.txt"
-
-__version__ = "0.1.dev2"
 
 app_title = f"montage.py (v{__version__})"
 

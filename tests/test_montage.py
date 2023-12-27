@@ -4,8 +4,9 @@ import os
 from importlib import reload
 from textwrap import dedent
 
-import montage
 import make_test_images
+
+from montage import montage
 
 
 def test_montage_help(capsys):

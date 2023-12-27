@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 
 import sys
 
@@ -51,7 +50,7 @@ def make_image(out_path: Path, canvas_size, bg_color, suffix=''):
     image.save(file_path)
 
 
-def main(output_dir: str):
+def main(output_dir: str = None):
     if output_dir is None:
         out_path = Path.cwd() / 'images_gen'
     else:
@@ -77,4 +76,4 @@ def main(output_dir: str):
 
 
 if __name__ == "__main__":
-    sys.exit(main(None))
+    sys.exit(main())

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 
 import argparse
 import sys
@@ -7,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List
 
-from montage import expand_image_list, unquote
+from montage import montage
 
 
 app_version = "220508.1"
@@ -262,7 +261,7 @@ class ImageList:
             f.write(self._get_section_bare("images-1"))
 
 
-def get_args():
+def get_args(arglist=None):
     ap = argparse.ArgumentParser(
         description="Search for missing image files listed in a "
         + "settings/options file for montage.py."
@@ -292,7 +291,7 @@ def get_args():
         + "directory.",
     )
 
-    return ap.parse_args()
+    return ap.parse_args(arglist)
 
 
 def get_opt_str(default, opt_name, content):
@@ -322,10 +321,10 @@ def get_option_entries(opt_section, opt_content):
     return result
 
 
-def main():
+def main(arglist=None):
     print(f"\n{app_title}\n")
 
-    args = get_args()
+    args = get_args(arglist)
 
     opt_path = Path(args.opt_file).expanduser().resolve()
 
@@ -376,9 +375,9 @@ def main():
 
     image_list.items += [
         ImageListItem("background-images", a)
-        for a in expand_image_list(
+        for a in montage.expand_image_list(
             [
-                unquote(b)
+                montage.unquote(b)
                 for b in get_option_entries("[background-images]", file_text)
                 if (b != "(skip)")
             ]
@@ -387,9 +386,9 @@ def main():
 
     image_list.items += [
         ImageListItem("images", a)
-        for a in expand_image_list(
+        for a in montage.expand_image_list(
             [
-                unquote(b)
+                montage.unquote(b)
                 for b in get_option_entries("[images]", file_text)
                 if (b != "(skip)")
             ]
@@ -398,9 +397,9 @@ def main():
 
     image_list.items += [
         ImageListItem("images-1", a)
-        for a in expand_image_list(
+        for a in montage.expand_image_list(
             [
-                unquote(b)
+                montage.unquote(b)
                 for b in get_option_entries("[images-1]", file_text)
                 if (b != "(skip)")
             ]

@@ -1,22 +1,9 @@
-# Private archives, notes, etc.
-private/
-notes-private.txt
-
-# Python.
+.vscode/
 venv/
 __pycache__/
+.pytest_cache/
+dist/
+
 .python-version
 
-# Tools config.
-.idea/
-.vscode/
-
-# App-specific.
-_0_bak/
-images/
-images_gen/
-opts/
-output/
-try/
-sausage.sh
-wipbak-list.txt
+output.jpg

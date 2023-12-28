@@ -1,3 +1,4 @@
-from montool_missing import main
+from montool_missing import montool_missing
 
-main()
+if __name__ == "__main__":
+    montool_missing.main()

@@ -1,7 +1,7 @@
 
 import pytest
 
-import montool_missing
+from montool_missing import montool_missing
 
 
 def test_montool_missing_help():

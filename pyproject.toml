@@ -32,11 +32,14 @@ Issues = "https://github.com/wmelvin/montage/issues"
 Source = "https://github.com/wmelvin/montage"
 
 [project.scripts]
-montage = "montage:montage.main"
-montool_missing = "montool_missing:__main__.main"
+make-montage = "montage:montage.main"
+montage-missing = "montool_missing:__main__.main"
 
 [tool.hatch.version]
 path = "src/montage/__about__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/montage", "src/montool_missing"]
 
 [tool.hatch.envs.default]
 dependencies = [

@@ -9,7 +9,7 @@ from typing import List
 from montage import montage
 
 
-app_version = "220508.1"
+app_version = "2023.12.1"
 
 app_name = "montool_missing"
 

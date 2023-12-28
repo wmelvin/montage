@@ -16,7 +16,7 @@ MAX_FEATURED_IMAGES = 4
 SKIP_MARKER = "(skip)"
 DEFAULT_ERRLOG = "montage-errors.txt"
 
-app_title = f"montage.py (v{__version__})"
+app_title = f"make-montage (montage.py v{__version__})"
 
 errlog = Path.cwd().joinpath(DEFAULT_ERRLOG)
 
@@ -1446,19 +1446,22 @@ def add_label(
         print(f"WARNING: Cannot load font '{opts.label_font}'.")
         return
 
-    font_size = font.getsize("M")
-
     draw = ImageDraw.Draw(image)
 
     label_text = Path(file_name).name
-
-    y = at_y + font_size[1]
 
     #  New image is RGB so there should be 3 bands.
     bands = image.getbands()
     assert 3 == len(bands)
 
-    px = image.getpixel((at_x, y))
+    try:
+        px = image.getpixel((at_x, at_y))
+    except IndexError:
+        print(
+            "WARNING: Cannot place label. Try increasing 'padding' and/or "
+            "'margin' values."
+        )
+        return
 
     #  Use average of RGB to select white or black fill.
     avg = int(sum(px) / 3)
@@ -1467,7 +1470,7 @@ def add_label(
     else:
         fill_rgba = (255, 255, 255, 255)
 
-    draw.text((at_x, y), label_text, font=font, fill=fill_rgba)
+    draw.text((at_x, at_y), label_text, font=font, fill=fill_rgba)
 
 
 def create_image(opts: MontageOptions, image_num: int):
@@ -1625,8 +1628,8 @@ def create_image(opts: MontageOptions, image_num: int):
             add_border(image, border_size, border_xy, opts)
 
         if 0 < opts.label_size and opts.label_font:
-            label_x = place.x
-            label_y = new_y + new_h + 5
+            label_x = place.x            
+            label_y = new_y + new_h + opts.border_width + 3
             add_label(image, image_name, label_x, label_y, opts)
 
         if crop_box is None:

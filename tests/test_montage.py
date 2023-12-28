@@ -1,6 +1,8 @@
 import pytest
 import os
+import shutil
 
+from pathlib import Path
 from importlib import reload
 from textwrap import dedent
 
@@ -21,7 +23,7 @@ def test_montage_help(capsys):
     #  rather than "usage: montage.py..."
 
     assert "[-h]" in captured.out
-    assert "montage.py (v" in captured.out
+    assert "make-montage (montage.py v" in captured.out
 
 
 @pytest.fixture(scope="module")
@@ -303,3 +305,62 @@ def test_no_error_log(tmp_path, capsys):
     captured = capsys.readouterr()
     assert "settings-file-does-not-exist" in captured.err
     assert not log_path.exists()
+
+
+@pytest.mark.skip(reason="depends on specific font installed")
+@pytest.mark.parametrize(
+    "num,margin,padding,border", [
+        (1, 0, 0, 0),
+        (2, 20, 0, 0),
+        (3, 0, 20, 0),
+        (4, 0, 0, 20),
+        (5, 10, 20, 10),
+    ]
+)
+def test_add_label(tmp_path, generated_images_path, num, margin, padding, border):
+    reload(montage)
+    out_path = tmp_path / "output"
+    out_path.mkdir()
+
+    #  Copy output image files for visual review.
+    copy_to = Path.home() / "Temp"
+
+    out_file_name = f"test-add-label-{num}.jpg"
+    template = dedent(
+        """
+        [settings]
+        output_file={2}
+        output_dir="{0}"
+        write_opts=True
+        margin={3}
+        padding={4}
+        border_width={5}
+
+        label_font=DejaVuSansMono.ttf
+        label_size=18
+
+        [images]
+        {1}/gen-400x400-A.jpg
+        {1}/gen-400x400-B.jpg
+        {1}/gen-400x400-C.jpg
+        {1}/gen-480x640-D.jpg
+        """
+    )
+    opt_file = tmp_path / f"options-{num}.txt"
+    opt_file.write_text(
+        template.format(
+            str(out_path),
+            str(generated_images_path),
+            out_file_name,
+            margin,
+            padding,
+            border
+        )
+    )
+    args = ["-s", str(opt_file)]
+    result = montage.main(args)
+    assert result == 0
+    p = out_path / out_file_name
+    assert p.exists()
+    if copy_to and copy_to.exists():
+        shutil.copy(str(p), str(copy_to))

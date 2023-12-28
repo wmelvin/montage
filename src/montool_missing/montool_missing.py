@@ -13,7 +13,7 @@ app_version = "2023.12.1"
 
 app_name = "montool_missing"
 
-app_title = f"{app_name}.py (version {app_version})"
+app_title = f"montage-missing ({app_name}.py v{app_version})"
 
 run_dt = datetime.now().strftime("%y%m%d_%H%M%S")
 

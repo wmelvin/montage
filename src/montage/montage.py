@@ -8,15 +8,15 @@ from datetime import datetime
 from typing import List
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 from pathlib import Path
+from importlib import metadata
 
-from montage.__about__ import __version__
 
+DIST_NAME = "montage"
 MAX_SHUFFLE_COUNT = 999
 MAX_FEATURED_IMAGES = 4
 SKIP_MARKER = "(skip)"
 DEFAULT_ERRLOG = "montage-errors.txt"
 
-app_title = f"make-montage (montage.py v{__version__})"
 
 errlog = Path.cwd().joinpath(DEFAULT_ERRLOG)
 
@@ -514,7 +514,7 @@ class MontageOptions:
             with open(file_name, "w") as f:
                 f.write(
                     "# Created {0} by {1}\n".format(
-                        datetime.now().strftime("%Y-%m-%d %H:%M"), app_title
+                        datetime.now().strftime("%Y-%m-%d %H:%M"), app_title()
                     )
                 )
 
@@ -855,11 +855,18 @@ class MontageOptions:
 
 # ----------------------------------------------------------------------
 
+def app_title():
+    try:
+        ver = metadata.version(DIST_NAME)
+    except metadata.PackageNotFoundError:
+        ver = "?"
+    return f"make-montage ({Path(__file__).name} v{ver})"
+
 
 def error_exit(error_message: str, error_list: List[str] = None):
     errs = []
     errs.append(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M')}]")
-    errs.append(f"HALTED {app_title}")
+    errs.append(f"HALTED {app_title()}")
 
     if error_message:
         errs.append(error_message)
@@ -1659,7 +1666,7 @@ def create_montages(opts: MontageOptions):
 
 
 def main(arglist=None):
-    print(f"\n{app_title}\n")
+    print(f"\n{app_title()}\n")
 
     defaults = MontageDefaults()
 
@@ -1685,7 +1692,7 @@ def main(arglist=None):
 
     create_montages(opts)
 
-    print(f"\nDone ({app_title}).")
+    print(f"\nDone ({app_title()}).")
 
     return 0
 

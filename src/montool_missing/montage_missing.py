@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List
 
-from montage import montage
+from montage.make_montage import expand_image_list, unquote
 
 
 app_version = "2023.12.1"
@@ -375,9 +375,9 @@ def main(arglist=None):
 
     image_list.items += [
         ImageListItem("background-images", a)
-        for a in montage.expand_image_list(
+        for a in expand_image_list(
             [
-                montage.unquote(b)
+                unquote(b)
                 for b in get_option_entries("[background-images]", file_text)
                 if (b != "(skip)")
             ]
@@ -386,9 +386,9 @@ def main(arglist=None):
 
     image_list.items += [
         ImageListItem("images", a)
-        for a in montage.expand_image_list(
+        for a in expand_image_list(
             [
-                montage.unquote(b)
+                unquote(b)
                 for b in get_option_entries("[images]", file_text)
                 if (b != "(skip)")
             ]
@@ -397,9 +397,9 @@ def main(arglist=None):
 
     image_list.items += [
         ImageListItem("images-1", a)
-        for a in montage.expand_image_list(
+        for a in expand_image_list(
             [
-                montage.unquote(b)
+                unquote(b)
                 for b in get_option_entries("[images-1]", file_text)
                 if (b != "(skip)")
             ]

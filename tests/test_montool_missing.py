@@ -1,10 +1,10 @@
 
 import pytest
 
-from montool_missing import montool_missing
+from montool_missing import montage_missing
 
 
 def test_montool_missing_help():
     args = ["-h"]
     with pytest.raises(SystemExit):
-        montool_missing.main(args)
+        montage_missing.main(args)

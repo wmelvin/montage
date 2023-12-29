@@ -32,8 +32,8 @@ Issues = "https://github.com/wmelvin/montage/issues"
 Source = "https://github.com/wmelvin/montage"
 
 [project.scripts]
-make-montage = "montage:montage.main"
-montage-missing = "montool_missing:montool_missing.main"
+make-montage = "montage:make_montage.main"
+montage-missing = "montool_missing:montage_missing.main"
 
 [tool.hatch.version]
 path = "src/montage/__about__.py"

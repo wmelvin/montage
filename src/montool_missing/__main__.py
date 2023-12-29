@@ -1,4 +1,4 @@
-import montool_missing
+from montool_missing import montage_missing
 
 if __name__ == "__main__":
-    montool_missing.main()
+    montage_missing.main()

@@ -8,13 +8,13 @@ from textwrap import dedent
 
 import make_test_images
 
-from montage import montage
+from montage import make_montage
 
 
 def test_montage_help(capsys):
     args = ["-h"]
     with pytest.raises(SystemExit):
-        montage.main(args)
+        make_montage.main(args)
 
     captured = capsys.readouterr()
 
@@ -23,7 +23,7 @@ def test_montage_help(capsys):
     #  rather than "usage: montage.py..."
 
     assert "[-h]" in captured.out
-    assert "make-montage (montage.py v" in captured.out
+    assert "make-montage (" in captured.out
 
 
 @pytest.fixture(scope="module")
@@ -51,7 +51,7 @@ def test_make_test_images(generated_images_path):
 
 
 def test_feature_images(tmp_path, generated_images_path):
-    reload(montage)
+    reload(make_montage)
     out_path = tmp_path / "output"
     out_path.mkdir()
     opt_file = tmp_path / "options.txt"
@@ -107,13 +107,13 @@ def test_feature_images(tmp_path, generated_images_path):
         ).format(str(out_path), str(generated_images_path))
     )
     args = ["-s", str(opt_file)]
-    result = montage.main(args)
+    result = make_montage.main(args)
     assert result == 0
     assert len(list(out_path.glob("**/*.jpg"))) == 3, "Should create 3 files."
 
 
 def test_feature_images_as_list(tmp_path, generated_images_path):
-    reload(montage)
+    reload(make_montage)
     out_path = tmp_path / "output"
     out_path.mkdir()
     opt_file = tmp_path / "options.txt"
@@ -182,13 +182,13 @@ def test_feature_images_as_list(tmp_path, generated_images_path):
         ).format(str(out_path), str(generated_images_path))
     )
     args = ["-s", str(opt_file)]
-    result = montage.main(args)
+    result = make_montage.main(args)
     assert result == 0
     assert len(list(out_path.glob("**/*.jpg"))) == 3, "Should create 3 files."
 
 
 def test_feature_adjusts_to_bounds(tmp_path, generated_images_path):
-    reload(montage)
+    reload(make_montage)
     out_path = tmp_path / "output"
     out_path.mkdir()
     opt_file = tmp_path / "options.txt"
@@ -233,7 +233,7 @@ def test_feature_adjusts_to_bounds(tmp_path, generated_images_path):
         ).format(str(out_path), str(generated_images_path))
     )
     args = ["-s", str(opt_file)]
-    result = montage.main(args)
+    result = make_montage.main(args)
     assert result == 0
     assert len(list(out_path.glob("**/*.jpg"))) == 5, "Should create 5 files."
 
@@ -241,9 +241,9 @@ def test_feature_adjusts_to_bounds(tmp_path, generated_images_path):
 def test_error_exit(tmp_path, capsys):
     assert tmp_path.exists()
     os.chdir(tmp_path)
-    reload(montage)
+    reload(make_montage)
     with pytest.raises(SystemExit):
-        montage.error_exit("Oops!", error_list=["my", "bad"])
+        make_montage.error_exit("Oops!", error_list=["my", "bad"])
     captured = capsys.readouterr()
     assert "Oops!" in captured.err
     assert "my" in captured.err
@@ -254,15 +254,15 @@ def test_error_exit(tmp_path, capsys):
 def test_default_error_log(tmp_path, capsys):
     assert tmp_path.exists()
     os.chdir(tmp_path)
-    reload(montage)
-    log_path = tmp_path / montage.DEFAULT_ERRLOG
+    reload(make_montage)
+    log_path = tmp_path / make_montage.DEFAULT_ERRLOG
     args = [
         "montage.py",
         "-s",
         "settings-file-does-not-exist",
     ]
     with pytest.raises(SystemExit):
-        montage.main(args)
+        make_montage.main(args)
     captured = capsys.readouterr()
     assert "settings-file-does-not-exist" in captured.err
     assert log_path.exists()
@@ -272,7 +272,7 @@ def test_default_error_log(tmp_path, capsys):
 def test_alt_error_log(tmp_path, capsys):
     assert tmp_path.exists()
     os.chdir(tmp_path)
-    reload(montage)
+    reload(make_montage)
     log_path = tmp_path / "alt-error-log.txt"
     args = [
         "montage.py",
@@ -282,7 +282,7 @@ def test_alt_error_log(tmp_path, capsys):
         str(log_path),
     ]
     with pytest.raises(SystemExit):
-        montage.main(args)
+        make_montage.main(args)
     captured = capsys.readouterr()
     assert "settings-file-does-not-exist" in captured.err
     assert log_path.exists()
@@ -292,8 +292,8 @@ def test_alt_error_log(tmp_path, capsys):
 def test_no_error_log(tmp_path, capsys):
     assert tmp_path.exists()
     os.chdir(tmp_path)
-    reload(montage)
-    log_path = tmp_path / montage.DEFAULT_ERRLOG
+    reload(make_montage)
+    log_path = tmp_path / make_montage.DEFAULT_ERRLOG
     args = [
         "montage.py",
         "-s",
@@ -301,7 +301,7 @@ def test_no_error_log(tmp_path, capsys):
         "--no-log",
     ]
     with pytest.raises(SystemExit):
-        montage.main(args)
+        make_montage.main(args)
     captured = capsys.readouterr()
     assert "settings-file-does-not-exist" in captured.err
     assert not log_path.exists()
@@ -318,7 +318,7 @@ def test_no_error_log(tmp_path, capsys):
     ]
 )
 def test_add_label(tmp_path, generated_images_path, num, margin, padding, border):
-    reload(montage)
+    reload(make_montage)
     out_path = tmp_path / "output"
     out_path.mkdir()
 
@@ -358,7 +358,7 @@ def test_add_label(tmp_path, generated_images_path, num, margin, padding, border
         )
     )
     args = ["-s", str(opt_file)]
-    result = montage.main(args)
+    result = make_montage.main(args)
     assert result == 0
     p = out_path / out_file_name
     assert p.exists()

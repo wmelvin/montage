@@ -3,12 +3,16 @@ import os
 import shutil
 
 from pathlib import Path
+from PIL import ImageFont
 from importlib import reload
 from textwrap import dedent
 
 import make_test_images
 
 from montage import make_montage
+
+
+LABEL_FONT_NAME = "DejaVuSansMono.ttf"
 
 
 def test_montage_help(capsys):
@@ -307,7 +311,28 @@ def test_no_error_log(tmp_path, capsys):
     assert not log_path.exists()
 
 
-@pytest.mark.skip(reason="depends on specific font installed")
+def skipif_label_font_not_found():
+    """
+    Tries setting the specified font used in the test.
+    Returns a pytest _SkipifMarkDecorator that will cause the test to be
+    skipped if the font is not available.
+    """
+    try:
+        if LABEL_FONT_NAME.lower().endswith(".ttf"):
+            font = ImageFont.truetype(LABEL_FONT_NAME)
+        else:
+            font = ImageFont.load(LABEL_FONT_NAME)
+    except OSError:        
+        print(f"Cannot load font '{LABEL_FONT_NAME}'.")
+        font = None
+    
+    return pytest.mark.skipif(
+        font is None,
+        reason=f"Depends on '{LABEL_FONT_NAME}' font installed"
+    )
+
+
+@skipif_label_font_not_found()
 @pytest.mark.parametrize(
     "num,margin,padding,border", [
         (1, 0, 0, 0),
@@ -336,7 +361,7 @@ def test_add_label(tmp_path, generated_images_path, num, margin, padding, border
         padding={4}
         border_width={5}
 
-        label_font=DejaVuSansMono.ttf
+        label_font={6}
         label_size=18
 
         [images]
@@ -354,7 +379,8 @@ def test_add_label(tmp_path, generated_images_path, num, margin, padding, border
             out_file_name,
             margin,
             padding,
-            border
+            border,
+            LABEL_FONT_NAME
         )
     )
     args = ["-s", str(opt_file)]

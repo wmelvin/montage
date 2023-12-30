@@ -390,3 +390,45 @@ def test_add_label(tmp_path, generated_images_path, num, margin, padding, border
     assert p.exists()
     if copy_to and copy_to.exists():
         shutil.copy(str(p), str(copy_to))
+
+
+def test_feature_as_arg(tmp_path, generated_images_path):
+    reload(make_montage)
+    out_path = tmp_path / "output"
+    out_path.mkdir()
+    out_file_name = "test-feature-as-arg.jpg"
+    template = dedent(
+        """
+        [settings]
+        output_file={2}
+        output_dir="{0}"
+        columns=2
+        rows=2
+        write_opts=True
+        [images]
+        {1}/gen-400x400-A.jpg
+        {1}/gen-400x400-B.jpg
+        {1}/gen-400x400-C.jpg
+        {1}/gen-480x640-D.jpg
+        """
+    )
+    opt_file = tmp_path / f"options.txt"
+    opt_file.write_text(
+        template.format(
+            str(out_path),
+            str(generated_images_path),
+            out_file_name,
+        )
+    )
+    
+    args = [
+        "-s",
+        str(opt_file),
+        "--feature-1",
+        f"(1, 1, 1, 2, '{generated_images_path}/gen-480x640-D.jpg')",
+    ]
+    # Params: --feature-n (col, ncols, row, nrows, file_name)
+
+    result = make_montage.main(args)
+    assert result == 0
+    assert (out_path / out_file_name).exists()

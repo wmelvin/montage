@@ -922,6 +922,7 @@ def get_list_from_file(file_name):
 def expand_image_list(raw_list):
     new_list = []
     if raw_list:
+        assert isinstance(raw_list, list)
         for item in raw_list:
             if item.startswith("@"):
                 new_list += get_list_from_file(item[1:])
@@ -1262,15 +1263,15 @@ def get_feature_args(feat_args):
         )
         return FeatureAttributes(0, 0, 0, 0, [])
 
-    fn = unquote(a[4])
-    fn = expand_image_list(fn)
+    filename = unquote(a[4])
+    filename_list = expand_image_list([filename])
 
     return FeatureAttributes(
         int(a[0]),
         int(a[1]),
         int(a[2]),
         int(a[3]),
-        [] if len(fn) == 0 else [fn],
+        filename_list,
     )
 
 

@@ -1,13 +1,11 @@
+from __future__ import annotations
 
 import argparse
 import sys
-
 from datetime import datetime
 from pathlib import Path
-from typing import List
 
 from montage.make_montage import expand_image_list, unquote
-
 
 app_version = "2023.12.1"
 
@@ -15,25 +13,21 @@ app_name = "montool_missing"
 
 app_title = f"montage-missing ({app_name}.py v{app_version})"
 
-run_dt = datetime.now().strftime("%y%m%d_%H%M%S")
+run_dt = datetime.now().strftime("%y%m%d_%H%M%S")  # noqa: DTZ005
 
 
 class Lawg:
     def __init__(
-        self, file_name: str, include_timestamp: bool, do_write_now: bool
+        self, file_name: str, include_timestamp: bool, do_write_now: bool  # noqa: FBT001
     ):
         self.file_name = file_name
         self.include_timestamp = include_timestamp
         self.do_write_now = do_write_now
-        self.entries: List[str] = []
+        self.entries: list[str] = []
 
     def add(self, text: str):
-        if self.include_timestamp:
-            s = "[{0}]: {1}".format(
-                datetime.now().strftime("%Y-%m-%dT%H:%M:%S"), text
-            )
-        else:
-            s = text
+        s = f"[{datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}]: {text}" if self.include_timestamp else text  # noqa: DTZ005
+
         if self.do_write_now:
             self.write_now(s)
         else:
@@ -48,7 +42,7 @@ class Lawg:
             f.write(f"{text}\n")
 
     def write_out(self):
-        if 0 < len(self.entries):
+        if len(self.entries) > 0:
             print(f"Writing '{self.file_name}'")
             with open(self.file_name, "w") as f:
                 for entry in self.entries:
@@ -90,26 +84,25 @@ class ImageList:
         self.from_file = from_file
         self.output_dir = output_dir
         self.log = log
-        self.items: List[ImageListItem] = []
+        self.items: list[ImageListItem] = []
         self.num_missing = 0
         self.num_found = 0
 
     def _get_same_path(self, list_item: ImageListItem):
         for i in self.items:
-            if i.tried_to_find and (0 < len(i.new_path)):
-                if i.orig_parent == list_item.orig_parent:
-                    return str(Path(i.new_path).parent)
+            if i.tried_to_find and (len(i.new_path) > 0) and i.orig_parent == list_item.orig_parent:
+                return str(Path(i.new_path).parent)
         return ""
 
     def _find_per_same_parent(self, list_item: ImageListItem):
         globpat = f"**/{list_item.file_name}"
         same_parent_path = self._get_same_path(list_item)
-        if 0 < len(same_parent_path):
+        if len(same_parent_path) > 0:
             self.log.say("Found another item with the same parent path.")
             self.log.say(f"Searching {same_parent_path}")
             found = list(Path(same_parent_path).glob(globpat))
-            if 0 < len(found):
-                if 1 < len(found):
+            if len(found) > 0:
+                if len(found) > 1:
                     self.log.say("Found more than one match. Using first one.")
                     for x in found:
                         self.log.add(f"  '{x}'")
@@ -142,8 +135,8 @@ class ImageList:
             for p in parents[:-2]:
                 self.log.say(f"Searching {p}")
                 found = list(p.glob(globpat))
-                if 0 < len(found):
-                    if 1 < len(found):
+                if len(found) > 0:
+                    if len(found) > 1:
                         self.log.say(
                             "Found more than one match. Using first one."
                         )
@@ -159,8 +152,8 @@ class ImageList:
             p = Path(search_dir)
             self.log.say(f"Searching {p}")
             found = list(p.glob(globpat))
-            if 0 < len(found):
-                if 1 < len(found):
+            if len(found) > 0:
+                if len(found) > 1:
                     self.log.say("Found more than one match. Using first one.")
                     for x in found:
                         self.log.add(f"  '{x}'")
@@ -186,7 +179,7 @@ class ImageList:
                 f.write(f"{i}\n")
                 f.write(f"{i.as_str()}\n")
 
-    def _get_section(self, tag: str) -> List[str]:
+    def _get_section(self, tag: str) -> list[str]:
         s = f"\n[{tag}]\n"
         has_tag = False
         for item in self.items:
@@ -194,7 +187,7 @@ class ImageList:
                 has_tag = True
                 if item.original_exists:
                     s += f"{item.original_path}"
-                elif 0 < len(item.new_path):
+                elif len(item.new_path) > 0:
                     s += f"# OLD: {item.original_path}\n"
                     s += f"{item.new_path}\n"
                 else:
@@ -204,7 +197,7 @@ class ImageList:
             return s
         return ""
 
-    def _get_section_bare(self, tag: str) -> List[str]:
+    def _get_section_bare(self, tag: str) -> list[str]:
         s = f"\n[{tag}]\n"
         has_tag = False
         for item in self.items:
@@ -212,13 +205,13 @@ class ImageList:
                 has_tag = True
                 if item.original_exists:
                     s += f"{item.original_path}\n"
-                elif 0 < len(item.new_path):
+                elif len(item.new_path) > 0:
                     s += f"{item.new_path}\n"
         if has_tag:
             return s
         return ""
 
-    def _get_commented(self, tag: str) -> List[str]:
+    def _get_commented(self, tag: str) -> list[str]:
         s = self._get_section(tag)
         if len(s) == 0:
             return ""
@@ -262,7 +255,7 @@ class ImageList:
 def get_args(arglist=None):
     ap = argparse.ArgumentParser(
         description="Search for missing image files listed in a "
-        + "settings/options file for montage.py."
+        "settings/options file for montage.py."
     )
 
     ap.add_argument("opt_file", help="Name of settings/options file.")
@@ -275,7 +268,7 @@ def get_args(arglist=None):
         default="",
         action="store",
         help="Optional. Directory to start search. Default is to search the "
-        + "parent path of the current image file path.",
+        "parent path of the current image file path.",
     )
 
     ap.add_argument(
@@ -286,7 +279,7 @@ def get_args(arglist=None):
         default=str(Path.cwd()),
         action="store",
         help="Optional. Directory for output files. Default is current "
-        + "directory.",
+        "directory.",
     )
 
     return ap.parse_args(arglist)
@@ -296,9 +289,8 @@ def get_opt_str(default, opt_name, content):
     for opt in content:
         if opt.strip().startswith(opt_name):
             a = opt.split("=", 1)
-            if len(a) == 2:
-                if a[0].strip() == opt_name:
-                    return a[1].strip("'\" ")
+            if len(a) == 2 and a[0].strip() == opt_name:  # noqa: PLR2004
+                return a[1].strip("'\" ")
     return default
 
 
@@ -307,7 +299,7 @@ def get_option_entries(opt_section, opt_content):
     in_section = False
     for line in opt_content:
         s = line.strip()
-        if (0 < len(s)) and not s.startswith("#"):
+        if (len(s) > 0) and not s.startswith("#"):
             if in_section:
                 # New section?
                 if s.startswith("["):
@@ -327,21 +319,20 @@ def main(arglist=None):
     opt_path = Path(args.opt_file).expanduser().resolve()
 
     if not opt_path.exists():
-        sys.stderr.write("ERROR: Cannot find file: {0}\n".format(opt_path))
+        sys.stderr.write(f"ERROR: Cannot find file: {opt_path}\n")
         sys.exit(1)
 
-    if args.search_dir is not None:
-        if not Path(args.search_dir).exists():
-            sys.stderr.write(
-                "ERROR: Cannot find directory: {0}\n".format(args.search_dir)
-            )
-            sys.exit(1)
+    if (args.search_dir is not None) and (not Path(args.search_dir).exists()):
+        sys.stderr.write(
+            f"ERROR: Cannot find directory: {args.search_dir}\n"
+        )
+        sys.exit(1)
 
     output_dir = str(Path(args.output_dir).expanduser().resolve())
 
     if not Path(output_dir).exists():
         sys.stderr.write(
-            "ERROR: Cannot find output directory: {0}\n".format(output_dir)
+            f"ERROR: Cannot find output directory: {output_dir}\n"
         )
         sys.exit(1)
 
@@ -352,7 +343,7 @@ def main(arglist=None):
     log.add(f"Running {app_title}")
     log.say(f"Reading '{args.opt_file}'")
 
-    with open(opt_path, "r") as f:
+    with open(opt_path) as f:
         file_text = f.readlines()
 
     image_list = ImageList(args.opt_file, output_dir, log)
@@ -360,15 +351,15 @@ def main(arglist=None):
     # TODO: Handle list of images in a Feature section.
 
     section_text = get_option_entries("[feature-1]", file_text)
-    if 0 < len(section_text):
+    if len(section_text) > 0:
         feature_img = get_opt_str("", "file", section_text)
-        if 0 < len(feature_img) and (feature_img != "(skip)"):
+        if len(feature_img) > 0 and (feature_img != "(skip)"):
             image_list.items.append(ImageListItem("feature-1", feature_img))
 
     section_text = get_option_entries("[feature-2]", file_text)
-    if 0 < len(section_text):
+    if len(section_text) > 0:
         feature_img = get_opt_str("", "file", section_text)
-        if 0 < len(feature_img) and (feature_img != "(skip)"):
+        if len(feature_img) > 0 and (feature_img != "(skip)"):
             image_list.items.append(ImageListItem("feature-2", feature_img))
 
     image_list.items += [
@@ -417,7 +408,7 @@ def main(arglist=None):
     image_list.write_output_b()
 
     log.say(f"Count of missing image files = {image_list.num_missing}")
-    if 0 < image_list.num_missing:
+    if image_list.num_missing > 0:
         log.say(f"Count of those found = {image_list.num_found}")
 
     log.write_out()

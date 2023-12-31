@@ -77,6 +77,14 @@ config-path = "ruff_defaults.toml"
 [tool.ruff]
 extend = "ruff_defaults.toml"
 
+[tool.ruff.extend-per-file-ignores]
+# Ignore `S101` for now because replacing assert statements is a non-critical to-do.
+# Ignore `S311` because weak random numbers are okay here (not cryptography).
+# Ignore `T201` because print statements are intentional UI feedback.
+"make_montage.py" = ["S101", "S311", "T201"]
+"montage_missing.py" = ["T201"]
+"__init__.py" = ["T201"]
+
 [tool.coverage.run]
 source_pkgs = ["montage", "tests"]
 branch = true

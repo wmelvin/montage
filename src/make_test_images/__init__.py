@@ -1,12 +1,14 @@
+from __future__ import annotations
 
-from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
 import sys
+from pathlib import Path
+
+from PIL import Image, ImageDraw, ImageFont
 
 
 def make_image(out_path: Path, canvas_size, bg_color, suffix=''):
 
-    if (0 < len(suffix)) and (not suffix.startswith('-')):
+    if (len(suffix) > 0) and (not suffix.startswith('-')):
         suffix = '-' + suffix
 
     file_name = f'gen-{canvas_size[0]}x{canvas_size[1]}{suffix}.jpg'
@@ -23,7 +25,7 @@ def make_image(out_path: Path, canvas_size, bg_color, suffix=''):
     draw = ImageDraw.Draw(image)
 
     avg = int(sum(bg_color) / 3)
-    if 128 < avg:
+    if avg > 128:  # noqa: PLR2004
         fill_text = (0, 0, 0, 255)
         fill_grid = (98, 98, 98, 255)
     else:
@@ -47,11 +49,8 @@ def make_image(out_path: Path, canvas_size, bg_color, suffix=''):
     image.save(file_path)
 
 
-def main(output_dir: str = None):
-    if output_dir is None:
-        out_path = Path.cwd() / 'images_gen'
-    else:
-        out_path = Path(output_dir)
+def main(output_dir: str | None = None):
+    out_path = Path.cwd() / 'images_gen' if output_dir is None else Path(output_dir)
 
     make_image(out_path, (400, 400), (200, 100, 100), 'A')
     make_image(out_path, (400, 400), (100, 200, 100), 'B')

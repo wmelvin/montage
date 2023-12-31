@@ -202,8 +202,7 @@ class ImageList:
                 s += "\n"
         if has_tag:
             return s
-        else:
-            return ""
+        return ""
 
     def _get_section_bare(self, tag: str) -> List[str]:
         s = f"\n[{tag}]\n"
@@ -217,8 +216,7 @@ class ImageList:
                     s += f"{item.new_path}\n"
         if has_tag:
             return s
-        else:
-            return ""
+        return ""
 
     def _get_commented(self, tag: str) -> List[str]:
         s = self._get_section(tag)

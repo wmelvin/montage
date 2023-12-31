@@ -1,8 +1,7 @@
 
-import sys
-
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
+import sys
 
 
 def make_image(out_path: Path, canvas_size, bg_color, suffix=''):
@@ -10,9 +9,7 @@ def make_image(out_path: Path, canvas_size, bg_color, suffix=''):
     if (0 < len(suffix)) and (not suffix.startswith('-')):
         suffix = '-' + suffix
 
-    file_name = 'gen-{0}x{1}{2}.jpg'.format(
-        canvas_size[0], canvas_size[1], suffix
-    )
+    file_name = f'gen-{canvas_size[0]}x{canvas_size[1]}{suffix}.jpg'
 
     if not out_path.exists():
         out_path.mkdir()

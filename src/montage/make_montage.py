@@ -1,15 +1,16 @@
+from __future__ import annotations
 
 import argparse
 import random
 import sys
 import textwrap
-from collections import namedtuple
-from datetime import datetime
-from typing import List
-from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
-from pathlib import Path
+from datetime import datetime, timezone
+from enum import Enum
 from importlib import metadata
+from pathlib import Path
+from typing import NamedTuple
 
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 DIST_NAME = "montage"
 MAX_SHUFFLE_COUNT = 999
@@ -17,13 +18,44 @@ MAX_FEATURED_IMAGES = 4
 SKIP_MARKER = "(skip)"
 DEFAULT_ERRLOG = "montage-errors.txt"
 
+LEN_NAME_VALUE_SPLIT = 2
+LEN_RGB = 3
+LEN_RGBA = 4
 
-errlog = Path.cwd().joinpath(DEFAULT_ERRLOG)
+RGBA_MIN = 0
+RGBA_MAX = 255
+RGB_MID = 128
+
+#  Mode for adding a date_time stamp to the output file name:
+class StampMode(Enum):
+    NONE = 0
+    LEFT = 1  # left of file name
+    RIGHT = 2  # right of file name
+    LEFT_USEC = 3  # left of file name, include microseconds
+    RIGHT_USEC = 4  # right of file name, include microseconds
 
 
-FeatureAttributes = namedtuple(
-    "FeatureAttributes", "col, ncols, row, nrows, file_names"
-)
+class ErrorLog:
+    def __init__(self):
+        self.log_file_name = str(Path.cwd().joinpath(DEFAULT_ERRLOG))
+
+    def set_filename(self, file_name: str):
+        self.log_file_name = file_name
+
+    @property
+    def file_name(self):
+        return self.log_file_name
+
+
+errlog = ErrorLog()
+
+
+class FeatureAttributes(NamedTuple):
+    col: int
+    ncols: int
+    row: int
+    nrows: int
+    file_names: list[str]
 
 
 class FeaturedImage:
@@ -64,7 +96,7 @@ class MontageDefaults:
 
 class MontageOptions:
     def __init__(self):
-        self._run_dt = datetime.now()
+        self._run_dt = datetime.now(timezone.utc)
         self.output_file_name = None
         self.output_dir = None
         self.canvas_width = None
@@ -102,7 +134,7 @@ class MontageOptions:
         self.col_index = -1
         self.row_index = -1
 
-        self.featured_images: List[FeaturedImage] = []
+        self.featured_images: list[FeaturedImage] = []
 
         self.init_images = []
         #  Initial list of image file names, as loaded from the
@@ -158,23 +190,21 @@ class MontageOptions:
     def get_feature_filename(self, feature: FeatureAttributes, index: int):
         if index < len(feature.file_names):
             return feature.file_names[index]
-        else:
-            return ""
+        return ""
 
     def add_placement(self, x, y, w, h, file_name=""):
         self._placements.append(Placement(x, y, w, h, file_name))
 
-    def get_placements_list(self) -> List[Placement]:
+    def get_placements_list(self) -> list[Placement]:
         return self._placements
 
     def has_background_image(self) -> bool:
         return bool(self.init_bg_images)
 
     def get_bg_file_name(self):
-        if 0 <= self.bg_index:
+        if self.bg_index >= 0:
             return self.init_bg_images[self.bg_index]
-        else:
-            return None
+        return None
 
     def background_rgb(self):
         return self.bg_rgba[:3]
@@ -310,7 +340,7 @@ class MontageOptions:
         if self.do_shuffle_images():
             random.shuffle(self.current_images)
 
-        if self.init_images1 and 0 < self.curr_img1_pos:
+        if self.init_images1 and self.curr_img1_pos > 0:
             #  Image from [images-1] inserted at fixed position.
             #  Position is in range 1..n_images (index + 1).
             self.current_images.insert(
@@ -343,11 +373,11 @@ class MontageOptions:
         img_ncols = self.get_ncols()
 
         at_col = feat.col
-        while 1 < at_col and img_ncols < ((at_col - 1) + feat.ncols):
+        while at_col > 1 and img_ncols < ((at_col - 1) + feat.ncols):
             at_col -= 1
 
         use_ncols = feat.ncols
-        while 0 < use_ncols and img_ncols < use_ncols:
+        while use_ncols > 0 and img_ncols < use_ncols:
             use_ncols -= 1
 
         assert at_col
@@ -355,16 +385,16 @@ class MontageOptions:
 
         img_nrows = self.get_nrows()
         at_row = feat.row
-        while 1 < at_row and img_nrows < ((at_row - 1) + feat.nrows):
+        while at_row > 1 and img_nrows < ((at_row - 1) + feat.nrows):
             at_row -= 1
         use_nrows = feat.nrows
-        while 0 < use_nrows and img_nrows < use_nrows:
+        while use_nrows > 0 and img_nrows < use_nrows:
             use_nrows -= 1
 
         assert at_row
         assert use_nrows
 
-        filenames = [] + feat.file_names
+        filenames = [*feat.file_names]
         if "f" in self.shuffle_mode:
             random.shuffle(filenames)
 
@@ -383,7 +413,7 @@ class MontageOptions:
 
         if len(self.image_pool) == 0:  # First run.
             self.pool_index = -1
-            self.image_pool = [] + self.init_images
+            self.image_pool = [*self.init_images]
             if self.do_shuffle_images():
                 random.shuffle(self.image_pool)
         elif self.pool_wrapped and self.do_shuffle_images():
@@ -393,42 +423,37 @@ class MontageOptions:
         self.set_bg_index()
 
     def _timestamp_str(self):
-        if 2 < self.stamp_mode:
+        if self.stamp_mode in [StampMode.LEFT_USEC, StampMode.RIGHT_USEC]:
             fmt_str = "%Y%m%d_%H%M%S_%f"
         else:
             fmt_str = "%Y%m%d_%H%M%S"
-        return self._run_dt.strftime(fmt_str)
+        return self._run_dt.astimezone().strftime(fmt_str)
 
     def image_file_name(self, image_num):
-        if len(self.output_dir) == 0:
-            dir = Path.cwd()
-        else:
-            dir = Path(self.output_dir).expanduser().resolve()
+        out_dir = Path(self.output_dir).expanduser().resolve() if self.output_dir else Path.cwd()
 
-        assert dir.is_dir
-        assert dir.exists()
+        assert out_dir.is_dir
+        assert out_dir.exists()
 
         p = Path(self.output_file_name)
 
-        if 1 < self.shuffle_count:
+        if self.shuffle_count > 1:
             #  Note: The zero-padded length in the format for image_num should
             #  match the length of the value in MAX_SHUFFLE_COUNT.
-            p = Path(
-                "{0}-{1:03d}".format(p.with_suffix(""), image_num)
-            ).with_suffix(p.suffix)
+            p = Path(f"{p.with_suffix('')}-{image_num:03d}").with_suffix(p.suffix)
 
-        if self.stamp_mode in [1, 3]:
+        if self.stamp_mode in [StampMode.LEFT, StampMode.LEFT_USEC]:
             #  Mode 1: date_time stamp at left of file name.
             p = Path(
-                "{0}_{1}".format(self._timestamp_str(), p.with_suffix(""))
+                f"{self._timestamp_str()}_{p.with_suffix('')}"
             ).with_suffix(p.suffix)
-        elif self.stamp_mode in [2, 4]:
+        elif self.stamp_mode in [StampMode.RIGHT, StampMode.RIGHT_USEC]:
             #  Mode 2: date_time stamp at right of file name.
             p = Path(
-                "{0}_{1}".format(p.with_suffix(""), self._timestamp_str())
+                f"{p.with_suffix('')}_{self._timestamp_str()}"
             ).with_suffix(p.suffix)
 
-        return str(dir.joinpath(p))
+        return str(out_dir.joinpath(p))
 
     def _options_as_str(self):
         s = ""
@@ -437,21 +462,14 @@ class MontageOptions:
         s += f"output_dir={qs(self.output_dir)}\n"
         s += f"canvas_width={self.canvas_width}\n"
         s += f"canvas_height={self.canvas_height}\n"
-        s += "background_rgba={0},{1},{2},{3}\n".format(
-            self.bg_rgba[0], self.bg_rgba[1], self.bg_rgba[2], self.bg_rgba[3]
-        )
+        s += f"background_rgba={self.bg_rgba[0]},{self.bg_rgba[1]},{self.bg_rgba[2]},{self.bg_rgba[3]}\n"
         s += f"background_blur={self.bg_blur}\n"
         s += f"columns={int_list_str(self.init_ncols)}\n"
         s += f"rows={int_list_str(self.init_nrows)}\n"
         s += f"margin={self.margin}\n"
         s += f"padding={self.padding}\n"
         s += f"border_width={self.border_width}\n"
-        s += "border_rgba={0},{1},{2},{3}\n".format(
-            self.border_rgba[0],
-            self.border_rgba[1],
-            self.border_rgba[2],
-            self.border_rgba[3],
-        )
+        s += f"border_rgba={self.border_rgba[0]},{self.border_rgba[1]},{self.border_rgba[2]},{self.border_rgba[3]}\n"
         s += f"do_zoom={self.do_zoom}\n"
         s += f"img1_pos={int_list_str(self.init_img1_pos)}\n"
         s += f"img1_start={self.img1_start}\n"
@@ -505,17 +523,14 @@ class MontageOptions:
             p = Path(image_file_name)
 
             file_name = str(
-                Path(
-                    "{0}_{1}".format(p.with_suffix(""), "options")
-                ).with_suffix(".txt")
+                Path(f"{p.with_suffix('')}_options").with_suffix(".txt")
             )
 
             print(f"\nWriting options to '{file_name}'\n")
             with open(file_name, "w") as f:
                 f.write(
-                    "# Created {0} by {1}\n".format(
-                        datetime.now().strftime("%Y-%m-%d %H:%M"), app_title()
-                    )
+                    f"# Created {datetime.now(timezone.utc).astimezone().strftime('%Y-%m-%d %H:%M')}"
+                    f" by {app_title()}\n"
                 )
 
                 f.write(self._options_as_str())
@@ -538,26 +553,32 @@ class MontageOptions:
             feat_attr.nrows,
         ]
 
-        if any(0 < x for x in numeric_attrs):
+        if any(x > 0 for x in numeric_attrs):
             if any(x <= 0 for x in numeric_attrs):
                 errors.append(
                     f"Feature-{feat_num}: All column and row settings must "
-                    + "be set to not-zero values if any are set."
+                    "be set to not-zero values if any are set."
                 )
             if len(self.get_feature_filename(feat_attr, 0)) == 0:
                 errors.append(f"Feature-{feat_num}: File name must be set.")
 
         if feat_attr.file_names:
-            for file_name in feat_attr.file_names:
+            # for file_name in feat_attr.file_names:
+            #     if not (
+            #         file_name == SKIP_MARKER
+            #         or Path(file_name).expanduser().resolve().exists()
+            #     ):
+            #         errors.append(
+            #             f"Feature-{feat_num}: Image file not found: '{file_name}'."
+            #         )
+            errors.extend(
+                f"Feature-{feat_num}: Image file not found: '{file_name}'."
+                for file_name in feat_attr.file_names
                 if not (
                     file_name == SKIP_MARKER
                     or Path(file_name).expanduser().resolve().exists()
-                ):
-                    errors.append(
-                        "Feature-{0}: Image file not found: '{1}'.".format(
-                            feat_num, file_name
-                        )
-                    )
+                )
+            )
 
         return errors
 
@@ -573,21 +594,34 @@ class MontageOptions:
                     f"Output folder not a directory: '{self.output_dir}'."
                 )
 
-        for file_name in self.init_images:
-            if not file_name.strip() == SKIP_MARKER:
-                if not Path(file_name).expanduser().resolve().exists():
-                    errors.append(f"Image file not found: '{file_name}'.")
+        # for file_name in self.init_images:
+        #     if (file_name.strip() != SKIP_MARKER) and (not Path(file_name).expanduser().resolve().exists()):
+        #         errors.append(f"Image file not found: '{file_name}'.")
+        errors.extend(
+            f"Image file not found: '{file_name}'."
+            for file_name in self.init_images
+            if (file_name.strip() != SKIP_MARKER) and (not Path(file_name).expanduser().resolve().exists())
+        )
 
-        for file_name in self.init_images1:
-            if not file_name.strip() == SKIP_MARKER:
-                if not Path(file_name).expanduser().resolve().exists():
-                    errors.append(f"Image file not found: '{file_name}'.")
+        # for file_name in self.init_images1:
+        #     if (file_name.strip() != SKIP_MARKER) and (not Path(file_name).expanduser().resolve().exists()):
+        #         errors.append(f"Image file not found: '{file_name}'.")
+        errors.extend(
+            f"Image file not found: '{file_name}'."
+            for file_name in self.init_images1
+            if (file_name.strip() != SKIP_MARKER) and (not Path(file_name).expanduser().resolve().exists())
+        )
 
-        for file_name in self.init_bg_images:
-            if not Path(file_name).expanduser().resolve().exists():
-                errors.append(
-                    f"Background image file not found: '{file_name}'."
-                )
+        # for file_name in self.init_bg_images:
+        #     if not Path(file_name).expanduser().resolve().exists():
+        #         errors.append(
+        #             f"Background image file not found: '{file_name}'."
+        #         )
+        errors.extend(
+            f"Background image file not found: '{file_name}'."
+            for file_name in self.init_bg_images
+            if not Path(file_name).expanduser().resolve().exists()
+        )
 
         for feat_num, feat in enumerate(self.featured_images, start=1):
             errors += self.check_feature(feat_num, feat.initial_attr)
@@ -599,11 +633,11 @@ class MontageOptions:
         if file_name is not None:
             p = Path(file_name).expanduser().resolve()
             if not p.exists():
-                error_exit(f"ERROR: File not found: {p}")
+                error_exit(f"ERROR: File not found: {p}", [])
 
             print(f"Load settings from '{p.name}' in '{p.parent}'.")
 
-            with open(p, "r") as f:
+            with open(p) as f:
                 file_text = f.readlines()
 
             settings = get_option_entries("[settings]", file_text)
@@ -713,12 +747,12 @@ class MontageOptions:
 
         if self.border_rgba is None:
             self.border_rgba = defaults.border_rgba
-        elif type(self.border_rgba) == str:
+        elif isinstance(self.border_rgba, str):
             self.border_rgba = get_rgba(defaults.border_rgba, self.border_rgba)
 
         if self.bg_rgba is None:
             self.bg_rgba = defaults.background_rgba
-        elif type(self.bg_rgba) == str:
+        elif isinstance(self.bg_rgba, str):
             self.bg_rgba = get_rgba(defaults.background_rgba, self.bg_rgba)
 
         if self.bg_blur is None:
@@ -737,7 +771,7 @@ class MontageOptions:
             self.shuffle_count = 1
 
         if self.stamp_mode is None:
-            self.stamp_mode = 0
+            self.stamp_mode = StampMode.NONE
 
         if self.write_opts is None:
             self.write_opts = False
@@ -753,7 +787,7 @@ class MontageOptions:
 
     def load(self, args, defaults: MontageDefaults, settings_file=None):
         if args is None and settings_file is None:
-            error_exit("ERROR: No args object and no settings file name.")
+            error_exit("ERROR: No args object and no settings file name.", [])
 
         if settings_file is None:
             self._load_from_file(args.settings_file)
@@ -817,13 +851,11 @@ class MontageOptions:
             if args.stamp_mode is not None:
                 self.stamp_mode = args.stamp_mode
 
-            if args.write_opts is not None:
-                if args.write_opts:
-                    self.write_opts = True
+            if (args.write_opts is not None) and args.write_opts:
+                self.write_opts = True
 
-            if args.do_zoom is not None:
-                if args.do_zoom:
-                    self.do_zoom = True
+            if (args.do_zoom is not None) and args.do_zoom:
+                self.do_zoom = True
 
             #  Only support 2 featured images via command-line args.
             #  TODO: Accept more than two?
@@ -863,9 +895,9 @@ def app_title():
     return f"make-montage ({Path(__file__).name} v{ver})"
 
 
-def error_exit(error_message: str, error_list: List[str] = None):
+def error_exit(error_message: str, error_list: list[str]):
     errs = []
-    errs.append(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M')}]")
+    errs.append(f"\n[{datetime.now(timezone.utc).astimezone().strftime('%Y-%m-%d %H:%M')}]")
     errs.append(f"HALTED {app_title()}")
 
     if error_message:
@@ -882,9 +914,9 @@ def error_exit(error_message: str, error_list: List[str] = None):
     print("*" * 70)
     print("Halted due to errors.")
 
-    if errlog:
-        print(f"\nWriting '{errlog}'.\n")
-        with open(errlog, "a") as t:
+    if errlog.file_name:
+        print(f"\nWriting '{errlog.file_name}'.\n")
+        with open(errlog.file_name, "a") as t:
             for e in errs:
                 t.write(f"{e}\n")
 
@@ -904,11 +936,11 @@ def unquote(text: str) -> str:
 def get_list_from_file(file_name):
     p = Path(file_name).expanduser().resolve()
     if not p.exists():
-        error_exit(f"ERROR: File not found: {p}")
+        error_exit(f"ERROR: File not found: {p}", [])
 
     result = []
 
-    with open(p, "r") as f:
+    with open(p) as f:
         file_text = f.readlines()
 
     for line in file_text:
@@ -939,13 +971,11 @@ def warn_old_settings(settings):
     }
     for line in settings:
         a = line.split("=", 1)
-        if len(a) == 2:
+        if len(a) == LEN_NAME_VALUE_SPLIT:
             setting_name = a[0].strip()
-            if setting_name in old_settings.keys():
+            if setting_name in old_settings:
                 print(
-                    "WARNING: Obsolete setting '{0}': {1}".format(
-                        setting_name, old_settings[setting_name]
-                    )
+                    f"WARNING: Obsolete setting '{setting_name}': {old_settings[setting_name]}"
                 )
 
 
@@ -1216,9 +1246,8 @@ def get_opt_str(default, opt_name, content):
     for opt in content:
         if opt.strip().startswith(opt_name):
             a = opt.split("=", 1)
-            if len(a) == 2:
-                if a[0].strip() == opt_name:
-                    return unquote(a[1])
+            if (len(a) == LEN_NAME_VALUE_SPLIT) and (a[0].strip() == opt_name):
+                return unquote(a[1])
     return default
 
 
@@ -1226,10 +1255,10 @@ def get_opt_int(default, opt_name, content):
     s = get_opt_str(None, opt_name, content)
     if (s is None) or (len(s) == 0):
         return default
-    else:
-        assert s.isdigit()
-        # TODO: Handle case of invalid int setting.
-        return int(s)
+
+    assert s.isdigit()
+    # TODO: Handle case of invalid int setting.
+    return int(s)
 
 
 def get_opt_bool(default, opt_name, content):
@@ -1249,7 +1278,8 @@ def get_feature_args(feat_args):
 
     a = feat_args.strip("()").split(",")
 
-    if len(a) != 5:
+    expect_n_fields = 5
+    if len(a) != expect_n_fields:
         print(
             "WARNING: Ignoring invalid feature attributes. "
             "Expected five values separated by commas."
@@ -1285,16 +1315,17 @@ def get_opt_feat(section_content, default_to_none):
     file_names = [] if len(file_name) == 0 else [file_name]
 
     #  Get any additional file names in Feature section.
-    for line in section_content:
-        if "=" not in line:
-            file_names.append(unquote(line))
+    # for line in section_content:
+    #     if "=" not in line:
+    #         file_names.append(unquote(line))
+    file_names.extend(unquote(line) for line in section_content if "=" not in line)
 
     file_names = expand_image_list(file_names)
 
     if (ncols == 0) and default_to_none:
         return None
-    else:
-        return FeatureAttributes(col, ncols, row, nrows, file_names)
+
+    return FeatureAttributes(col, ncols, row, nrows, file_names)
 
 
 def as_int_list(text: str, default=None):
@@ -1305,9 +1336,8 @@ def as_int_list(text: str, default=None):
     """
     if (text is None) or (len(text) == 0):
         return default
-    else:
-        a = [int(x) for x in [t.strip() for t in text.split(",")] if x]
-        return a
+
+    return [int(x) for x in [t.strip() for t in text.split(",")] if x]
 
 
 def int_list_str(int_list):
@@ -1326,8 +1356,7 @@ def qs(s: str) -> str:
 
     if " " in s:
         return f'"{s}"'
-    else:
-        return s
+    return s
 
 
 def get_rgba(default, arg_str):
@@ -1344,7 +1373,7 @@ def get_rgba(default, arg_str):
         )
         return default
 
-    if any(int(x) < 0 or 255 < int(x) for x in a):
+    if any(int(x) < RGBA_MIN or int(x) > RGBA_MAX for x in a):
         print(
             "WARNING: Invalid backround color setting. "
             "Expecting numeric values between 0 and 255. "
@@ -1352,21 +1381,19 @@ def get_rgba(default, arg_str):
         )
         return default
 
-    if len(a) == 3:
-        default_alpha = 255
-        rgba = (int(a[0]), int(a[1]), int(a[2]), default_alpha)
-        return rgba
-    elif len(a) == 4:
-        rgba = (int(a[0]), int(a[1]), int(a[2]), int(a[3]))
-        return rgba
-    else:
-        print(
-            "WARNING: Invalid color setting. "
-            "Expecting numeric color values separated by commas "
-            "('r,g,b' or 'r,g,b,a'). "
-            "Using default."
-        )
-        return default
+    if len(a) == LEN_RGB:
+        return (int(a[0]), int(a[1]), int(a[2]), RGBA_MAX)
+
+    if len(a) == LEN_RGBA:
+        return (int(a[0]), int(a[1]), int(a[2]), int(a[3]))
+
+    print(
+        "WARNING: Invalid color setting. "
+        "Expecting numeric color values separated by commas "
+        "('r,g,b' or 'r,g,b,a'). "
+        "Using default."
+    )
+    return default
 
 
 def place_feature(
@@ -1392,11 +1419,12 @@ def outside_feat(col_index, row_index, feat_attr: FeatureAttributes):
     return True
 
 
-def outside_feature(col_index, row_index, feat_imgs: List[FeaturedImage]):
-    for feat in feat_imgs:
-        if not outside_feat(col_index, row_index, feat.current_attr):
-            return False
-    return True
+def outside_feature(col_index, row_index, feat_imgs: list[FeaturedImage]):
+    # for feat in feat_imgs:
+    #     if not outside_feat(col_index, row_index, feat.current_attr):
+    #         return False
+    # return True
+    return all(outside_feat(col_index, row_index, feat.current_attr) for feat in feat_imgs)
 
 
 def get_new_size_zoom(current_size, target_size):
@@ -1460,7 +1488,7 @@ def add_label(
 
     #  New image is RGB so there should be 3 bands.
     bands = image.getbands()
-    assert 3 == len(bands)
+    assert len(bands) == LEN_RGB
 
     try:
         px = image.getpixel((at_x, at_y))
@@ -1473,10 +1501,7 @@ def add_label(
 
     #  Use average of RGB to select white or black fill.
     avg = int(sum(px) / 3)
-    if 128 < avg:
-        fill_rgba = (0, 0, 0, 255)
-    else:
-        fill_rgba = (255, 255, 255, 255)
+    fill_rgba = (0, 0, 0, 255) if avg > RGB_MID else (255, 255, 255, 255)
 
     draw.text((at_x, at_y), label_text, font=font, fill=fill_rgba)
 
@@ -1492,9 +1517,7 @@ def create_image(opts: MontageOptions, image_num: int):
     inner_h = int(cell_h - (opts.padding * 2))
 
     opts.log_say(
-        "Creating new image (canvas size = {0} x {1} pixels).".format(
-            opts.canvas_width, opts.canvas_height
-        )
+        f"Creating new image (canvas size = {opts.canvas_width} x {opts.canvas_height} pixels)."
     )
     opts.log_add(f"ncols={ncols}")
     opts.log_add(f"nrows={nrows}")
@@ -1532,9 +1555,7 @@ def create_image(opts: MontageOptions, image_num: int):
         if bg_image.size != opts.canvas_size():
             #  These should match. Warn when they do not.
             opts.log_say(
-                "WARNING: bg_image.size={0} but canvas_size={1}.".format(
-                    bg_image.size, opts.canvas_size()
-                )
+                f"WARNING: bg_image.size={bg_image.size} but canvas_size={opts.canvas_size()}."
             )
 
         bg_image = bg_image.filter(ImageFilter.BoxBlur(opts.bg_blur))
@@ -1596,7 +1617,7 @@ def create_image(opts: MontageOptions, image_num: int):
             new_h = place.height
             new_x = place.x
             new_y = place.y
-            if 0 < opts.border_width:
+            if opts.border_width > 0:
                 border_size = (place.width, place.height)
                 border_xy = (place.x, place.y)
                 new_w = new_w - (opts.border_width * 2)
@@ -1611,17 +1632,11 @@ def create_image(opts: MontageOptions, image_num: int):
             new_w = int(img.width * scale_by)
             new_h = int(img.height * scale_by)
 
-            if new_w < place.width:
-                new_x = place.x + int((place.width - new_w) / 2)
-            else:
-                new_x = place.x
+            new_x = place.x + int((place.width - new_w) / 2) if new_w < place.width else place.x
 
-            if new_h < place.height:
-                new_y = place.y + int((place.height - new_h) / 2)
-            else:
-                new_y = place.y
+            new_y = place.y + int((place.height - new_h) / 2) if new_h < place.height else place.y
 
-            if 0 < opts.border_width:
+            if opts.border_width > 0:
                 border_size = (new_w, new_h)
                 border_xy = (new_x, new_y)
                 new_w = new_w - (opts.border_width * 2)
@@ -1632,11 +1647,11 @@ def create_image(opts: MontageOptions, image_num: int):
         new_size = (new_w, new_h)
         new_xy = (new_x, new_y)
 
-        if 0 < opts.border_width:
+        if opts.border_width > 0:
             add_border(image, border_size, border_xy, opts)
 
-        if 0 < opts.label_size and opts.label_font:
-            label_x = place.x            
+        if opts.label_size > 0 and opts.label_font:
+            label_x = place.x
             label_y = new_y + new_h + opts.border_width + 3
             add_label(image, image_name, label_x, label_y, opts)
 
@@ -1673,19 +1688,16 @@ def main(arglist=None):
 
     args = get_arguments(arglist)
 
-    global errlog
     if args.no_log:
-        errlog = None
+        errlog.set_filename("")
     elif args.error_log:
         #  Override default error log per arg.
         altlog = Path(args.error_log).expanduser().resolve()
         if not altlog.parent.exists():
-            error_exit(
-                f"Cannot find directory for log file: '{altlog.parent}'"
-            )
+            error_exit(f"Cannot find directory for log file: '{altlog.parent}'", [])
         if altlog.exists() and not altlog.is_file():
-            error_exit(f"Not a file: '{altlog}'")
-        errlog = altlog
+            error_exit(f"Not a file: '{altlog}'", [])
+        errlog.set_filename(str(altlog))
 
     opts = MontageOptions()
 

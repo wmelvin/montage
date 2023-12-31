@@ -71,6 +71,12 @@ dependencies = [
 [tool.hatch.envs.types.scripts]
 check = "mypy --install-types --non-interactive {args:src/montage tests}"
 
+[tool.hatch.envs.hatch-static-analysis]
+config-path = "ruff_defaults.toml"
+
+[tool.ruff]
+extend = "ruff_defaults.toml"
+
 [tool.coverage.run]
 source_pkgs = ["montage", "tests"]
 branch = true

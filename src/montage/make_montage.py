@@ -478,7 +478,7 @@ class MontageOptions:
         s += f"label_size={self.label_size}\n"
         s += f"shuffle_mode={self.shuffle_mode}\n"
         s += f"shuffle_count={self.shuffle_count}\n"
-        s += f"stamp_mode={self.stamp_mode}\n"
+        s += f"stamp_mode={self.stamp_mode.value}\n"
         s += f"write_opts={self.write_opts}\n"
 
         if self.featured_images:
@@ -678,7 +678,9 @@ class MontageOptions:
 
             self.shuffle_count = get_opt_int(None, "shuffle_count", settings)
 
-            self.stamp_mode = get_opt_int(None, "stamp_mode", settings)
+            stmp = get_opt_int(None, "stamp_mode", settings)
+            if stmp:
+                self.stamp_mode = StampMode(stmp)
 
             self.write_opts = get_opt_bool(None, "write_opts", settings)
 

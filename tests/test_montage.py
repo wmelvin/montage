@@ -1,16 +1,15 @@
-import pytest
 import os
 import shutil
-
-from pathlib import Path
-from PIL import ImageFont
+import time
 from importlib import reload
+from pathlib import Path
 from textwrap import dedent
 
 import make_test_images
+import pytest
+from PIL import ImageFont
 
 from montage import make_montage
-
 
 LABEL_FONT_NAME = "DejaVuSansMono.ttf"
 
@@ -322,10 +321,10 @@ def skipif_label_font_not_found():
             font = ImageFont.truetype(LABEL_FONT_NAME)
         else:
             font = ImageFont.load(LABEL_FONT_NAME)
-    except OSError:        
-        print(f"Cannot load font '{LABEL_FONT_NAME}'.")
+    except OSError:
+        print(f"Cannot load font '{LABEL_FONT_NAME}'.")  # noqa: T201
         font = None
-    
+
     return pytest.mark.skipif(
         font is None,
         reason=f"Depends on '{LABEL_FONT_NAME}' font installed"
@@ -334,7 +333,7 @@ def skipif_label_font_not_found():
 
 @skipif_label_font_not_found()
 @pytest.mark.parametrize(
-    "num,margin,padding,border", [
+    ("num", "margin", "padding", "border"), [
         (1, 0, 0, 0),
         (2, 20, 0, 0),
         (3, 0, 20, 0),
@@ -412,7 +411,7 @@ def test_feature_as_arg(tmp_path, generated_images_path):
         {1}/gen-480x640-D.jpg
         """
     )
-    opt_file = tmp_path / f"options.txt"
+    opt_file = tmp_path / "options.txt"
     opt_file.write_text(
         template.format(
             str(out_path),
@@ -420,7 +419,7 @@ def test_feature_as_arg(tmp_path, generated_images_path):
             out_file_name,
         )
     )
-    
+
     args = [
         "-s",
         str(opt_file),
@@ -432,3 +431,57 @@ def test_feature_as_arg(tmp_path, generated_images_path):
     result = make_montage.main(args)
     assert result == 0
     assert (out_path / out_file_name).exists()
+
+
+def test_use_written_options_file(tmp_path, generated_images_path):
+    reload(make_montage)
+    out_path = tmp_path / "output"
+    out_path.mkdir()
+    out_file_name = "output-image.jpg"
+    template = dedent(
+        """
+        [settings]
+        output_file={2}
+        output_dir="{0}"
+        columns=2
+        rows=2
+        stamp_mode=1
+        write_opts=True
+        [images]
+        {1}/gen-400x400-A.jpg
+        {1}/gen-400x400-B.jpg
+        {1}/gen-400x400-C.jpg
+        {1}/gen-480x640-D.jpg
+        """
+    )
+    opt_file = tmp_path / "options.txt"
+    opt_file.write_text(
+        template.format(
+            str(out_path),
+            str(generated_images_path),
+            out_file_name,
+        )
+    )
+
+    args = ["-s", str(opt_file)]
+
+    result = make_montage.main(args)
+    assert result == 0
+
+    files = list(out_path.glob(f"*{out_file_name}"))
+    assert files
+    write_opts_file = Path(f"{files[0].with_suffix('')}_options.txt")
+    assert write_opts_file.exists()
+
+    #  Replace the options text with what was logged in the previous output.
+    opt_file.write_text(write_opts_file.read_text())
+
+    #  Add a delay so the second run produces a different 'stamp' in the file name.
+    time.sleep(1.5)
+
+    result = make_montage.main(args)
+    assert result == 0
+
+    #  There should now be two image files.
+    files = list(out_path.glob(f"*{out_file_name}"))
+    assert len(files) == 2

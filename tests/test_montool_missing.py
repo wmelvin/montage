@@ -1,4 +1,3 @@
-
 import pytest
 from montool_missing import montage_missing
 

@@ -18,7 +18,10 @@ run_dt = datetime.now().strftime("%y%m%d_%H%M%S")  # noqa: DTZ005
 
 class Lawg:
     def __init__(
-        self, file_name: str, include_timestamp: bool, do_write_now: bool  # noqa: FBT001
+        self,
+        file_name: str,
+        include_timestamp: bool,  # noqa: FBT001
+        do_write_now: bool,  # noqa: FBT001
     ):
         self.file_name = file_name
         self.include_timestamp = include_timestamp
@@ -137,9 +140,7 @@ class ImageList:
                 found = list(p.glob(globpat))
                 if len(found) > 0:
                     if len(found) > 1:
-                        self.log.say(
-                            "Found more than one match. Using first one."
-                        )
+                        self.log.say("Found more than one match. Using first one.")
                         for x in found:
                             self.log.add(f"  '{x}'")
                     list_item.new_path = str(found[0])
@@ -254,8 +255,7 @@ class ImageList:
 
 def get_args(arglist=None):
     ap = argparse.ArgumentParser(
-        description="Search for missing image files listed in a "
-        "settings/options file for montage.py."
+        description="Search for missing image files listed in a " "settings/options file for montage.py."
     )
 
     ap.add_argument("opt_file", help="Name of settings/options file.")
@@ -278,8 +278,7 @@ def get_args(arglist=None):
         type=str,
         default=str(Path.cwd()),
         action="store",
-        help="Optional. Directory for output files. Default is current "
-        "directory.",
+        help="Optional. Directory for output files. Default is current " "directory.",
     )
 
     return ap.parse_args(arglist)
@@ -323,17 +322,13 @@ def main(arglist=None):
         sys.exit(1)
 
     if (args.search_dir is not None) and (not Path(args.search_dir).exists()):
-        sys.stderr.write(
-            f"ERROR: Cannot find directory: {args.search_dir}\n"
-        )
+        sys.stderr.write(f"ERROR: Cannot find directory: {args.search_dir}\n")
         sys.exit(1)
 
     output_dir = str(Path(args.output_dir).expanduser().resolve())
 
     if not Path(output_dir).exists():
-        sys.stderr.write(
-            f"ERROR: Cannot find output directory: {output_dir}\n"
-        )
+        sys.stderr.write(f"ERROR: Cannot find output directory: {output_dir}\n")
         sys.exit(1)
 
     log_name = f"{app_name}_{run_dt}_LOG.txt"
@@ -365,34 +360,18 @@ def main(arglist=None):
     image_list.items += [
         ImageListItem("background-images", a)
         for a in expand_image_list(
-            [
-                unquote(b)
-                for b in get_option_entries("[background-images]", file_text)
-                if (b != "(skip)")
-            ]
+            [unquote(b) for b in get_option_entries("[background-images]", file_text) if (b != "(skip)")]
         )
     ]
 
     image_list.items += [
         ImageListItem("images", a)
-        for a in expand_image_list(
-            [
-                unquote(b)
-                for b in get_option_entries("[images]", file_text)
-                if (b != "(skip)")
-            ]
-        )
+        for a in expand_image_list([unquote(b) for b in get_option_entries("[images]", file_text) if (b != "(skip)")])
     ]
 
     image_list.items += [
         ImageListItem("images-1", a)
-        for a in expand_image_list(
-            [
-                unquote(b)
-                for b in get_option_entries("[images-1]", file_text)
-                if (b != "(skip)")
-            ]
-        )
+        for a in expand_image_list([unquote(b) for b in get_option_entries("[images-1]", file_text) if (b != "(skip)")])
     ]
 
     log.add(f"search_dir = '{args.search_dir}'")

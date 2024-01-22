@@ -26,6 +26,7 @@ RGBA_MIN = 0
 RGBA_MAX = 255
 RGB_MID = 128
 
+
 #  Mode for adding a date_time stamp to the output file name:
 class StampMode(Enum):
     NONE = 0
@@ -333,9 +334,7 @@ class MontageOptions:
 
         if self.do_img1 and self.curr_img1_pos < 1:
             #  Image from [images-1] in shuffle (not at fixed position).
-            self.current_images.append(
-                self.init_images1[self.get_next_im1_index()]
-            )
+            self.current_images.append(self.init_images1[self.get_next_im1_index()])
 
         if self.do_shuffle_images():
             random.shuffle(self.current_images)
@@ -398,9 +397,7 @@ class MontageOptions:
         if "f" in self.shuffle_mode:
             random.shuffle(filenames)
 
-        return FeatureAttributes(
-            at_col, use_ncols, at_row, use_nrows, filenames
-        )
+        return FeatureAttributes(at_col, use_ncols, at_row, use_nrows, filenames)
 
     def prepare(self, image_num: int):
         self._placements.clear()
@@ -444,14 +441,10 @@ class MontageOptions:
 
         if self.stamp_mode in [StampMode.LEFT, StampMode.LEFT_USEC]:
             #  Mode 1: date_time stamp at left of file name.
-            p = Path(
-                f"{self._timestamp_str()}_{p.with_suffix('')}"
-            ).with_suffix(p.suffix)
+            p = Path(f"{self._timestamp_str()}_{p.with_suffix('')}").with_suffix(p.suffix)
         elif self.stamp_mode in [StampMode.RIGHT, StampMode.RIGHT_USEC]:
             #  Mode 2: date_time stamp at right of file name.
-            p = Path(
-                f"{p.with_suffix('')}_{self._timestamp_str()}"
-            ).with_suffix(p.suffix)
+            p = Path(f"{p.with_suffix('')}_{self._timestamp_str()}").with_suffix(p.suffix)
 
         return str(out_dir.joinpath(p))
 
@@ -484,10 +477,7 @@ class MontageOptions:
         if self.featured_images:
             for feat_num, feat in enumerate(self.featured_images, start=1):
                 s += f"\n[feature-{feat_num}]\n"
-                s += (
-                    "file="
-                    f"{qs(self.get_feature_filename(feat.current_attr, 0))}\n"
-                )
+                s += "file=" f"{qs(self.get_feature_filename(feat.current_attr, 0))}\n"
                 s += f"column={feat.current_attr.col}\n"
                 s += f"row={feat.current_attr.row}\n"
                 s += f"num_columns={feat.current_attr.ncols}\n"
@@ -522,9 +512,7 @@ class MontageOptions:
         if self.write_opts:
             p = Path(image_file_name)
 
-            file_name = str(
-                Path(f"{p.with_suffix('')}_options").with_suffix(".txt")
-            )
+            file_name = str(Path(f"{p.with_suffix('')}_options").with_suffix(".txt"))
 
             print(f"\nWriting options to '{file_name}'\n")
             with open(file_name, "w") as f:
@@ -556,8 +544,7 @@ class MontageOptions:
         if any(x > 0 for x in numeric_attrs):
             if any(x <= 0 for x in numeric_attrs):
                 errors.append(
-                    f"Feature-{feat_num}: All column and row settings must "
-                    "be set to not-zero values if any are set."
+                    f"Feature-{feat_num}: All column and row settings must " "be set to not-zero values if any are set."
                 )
             if len(self.get_feature_filename(feat_attr, 0)) == 0:
                 errors.append(f"Feature-{feat_num}: File name must be set.")
@@ -574,10 +561,7 @@ class MontageOptions:
             errors.extend(
                 f"Feature-{feat_num}: Image file not found: '{file_name}'."
                 for file_name in feat_attr.file_names
-                if not (
-                    file_name == SKIP_MARKER
-                    or Path(file_name).expanduser().resolve().exists()
-                )
+                if not (file_name == SKIP_MARKER or Path(file_name).expanduser().resolve().exists())
             )
 
         return errors
@@ -590,9 +574,7 @@ class MontageOptions:
                 errors.append(f"Output folder not found: '{self.output_dir}'.")
 
             if not Path(self.output_dir).is_dir():
-                errors.append(
-                    f"Output folder not a directory: '{self.output_dir}'."
-                )
+                errors.append(f"Output folder not a directory: '{self.output_dir}'.")
 
         # for file_name in self.init_images:
         #     if (file_name.strip() != SKIP_MARKER) and (not Path(file_name).expanduser().resolve().exists()):
@@ -652,9 +634,7 @@ class MontageOptions:
 
             self.canvas_height = get_opt_int(None, "canvas_height", settings)
 
-            self.init_ncols = as_int_list(
-                get_opt_str(None, "columns", settings)
-            )
+            self.init_ncols = as_int_list(get_opt_str(None, "columns", settings))
 
             self.init_nrows = as_int_list(get_opt_str(None, "rows", settings))
 
@@ -688,13 +668,9 @@ class MontageOptions:
 
             self.img1_start = get_opt_int(1, "img1_start", settings)
 
-            self.init_img1_freq = as_int_list(
-                get_opt_str(None, "img1_freq", settings)
-            )
+            self.init_img1_freq = as_int_list(get_opt_str(None, "img1_freq", settings))
 
-            self.init_img1_pos = as_int_list(
-                get_opt_str(None, "img1_pos", settings)
-            )
+            self.init_img1_pos = as_int_list(get_opt_str(None, "img1_pos", settings))
 
             for feat_num in range(1, MAX_FEATURED_IMAGES + 1):
                 temp_feat: FeatureAttributes = get_opt_feat(
@@ -704,18 +680,11 @@ class MontageOptions:
                 if temp_feat:
                     self.featured_images.append(FeaturedImage(temp_feat))
 
-            self.init_images += [
-                unquote(i) for i in get_option_entries("[images]", file_text)
-            ]
+            self.init_images += [unquote(i) for i in get_option_entries("[images]", file_text)]
 
-            self.init_images1 += [
-                unquote(i) for i in get_option_entries("[images-1]", file_text)
-            ]
+            self.init_images1 += [unquote(i) for i in get_option_entries("[images-1]", file_text)]
 
-            self.init_bg_images += [
-                unquote(i)
-                for i in get_option_entries("[background-images]", file_text)
-            ]
+            self.init_bg_images += [unquote(i) for i in get_option_entries("[background-images]", file_text)]
 
     def _set_defaults(self, defaults: MontageDefaults):
         #  Use defaults for options not already set.
@@ -864,15 +833,11 @@ class MontageOptions:
 
             if args.feature_1 is not None:
                 assert len(self.featured_images) < MAX_FEATURED_IMAGES
-                self.featured_images.append(
-                    FeaturedImage(get_feature_args(args.feature_1))
-                )
+                self.featured_images.append(FeaturedImage(get_feature_args(args.feature_1)))
 
             if args.feature_2 is not None:
                 assert len(self.featured_images) < MAX_FEATURED_IMAGES
-                self.featured_images.append(
-                    FeaturedImage(get_feature_args(args.feature_2))
-                )
+                self.featured_images.append(FeaturedImage(get_feature_args(args.feature_2)))
 
             self.init_images = [i for i in args.images if i] + self.init_images
 
@@ -888,6 +853,7 @@ class MontageOptions:
 
 
 # ----------------------------------------------------------------------
+
 
 def app_title():
     try:
@@ -976,9 +942,7 @@ def warn_old_settings(settings):
         if len(a) == LEN_NAME_VALUE_SPLIT:
             setting_name = a[0].strip()
             if setting_name in old_settings:
-                print(
-                    f"WARNING: Obsolete setting '{setting_name}': {old_settings[setting_name]}"
-                )
+                print(f"WARNING: Obsolete setting '{setting_name}': {old_settings[setting_name]}")
 
 
 def get_arguments(arglist=None):
@@ -991,8 +955,7 @@ def get_arguments(arglist=None):
         "images",
         nargs="*",
         action="store",
-        help="Images files to include in the montage image."
-        " Multiple files can be specified.",
+        help="Images files to include in the montage image." " Multiple files can be specified.",
     )
 
     ap.add_argument(
@@ -1119,8 +1082,7 @@ def get_arguments(arglist=None):
         dest="feature_1",
         type=str,
         action="store",
-        help="Attributes for first featured image as"
-        " (col, ncols, row, nrows, file_name).",
+        help="Attributes for first featured image as" " (col, ncols, row, nrows, file_name).",
     )
 
     ap.add_argument(
@@ -1128,8 +1090,7 @@ def get_arguments(arglist=None):
         dest="feature_2",
         type=str,
         action="store",
-        help="Attributes for second featured image as"
-        " (col, ncols, row, nrows, file_name).",
+        help="Attributes for second featured image as" " (col, ncols, row, nrows, file_name).",
     )
 
     ap.add_argument(
@@ -1282,17 +1243,11 @@ def get_feature_args(feat_args):
 
     expect_n_fields = 5
     if len(a) != expect_n_fields:
-        print(
-            "WARNING: Ignoring invalid feature attributes. "
-            "Expected five values separated by commas."
-        )
+        print("WARNING: Ignoring invalid feature attributes. " "Expected five values separated by commas.")
         return FeatureAttributes(0, 0, 0, 0, [])
 
     if any(not x.strip().isdigit() for x in a[:-1]):
-        print(
-            "WARNING: Ignoring invalid feature attributes. "
-            "Expected first four numeric values are numeric."
-        )
+        print("WARNING: Ignoring invalid feature attributes. " "Expected first four numeric values are numeric.")
         return FeatureAttributes(0, 0, 0, 0, [])
 
     filename = unquote(a[4])
@@ -1398,9 +1353,7 @@ def get_rgba(default, arg_str):
     return default
 
 
-def place_feature(
-    opts: MontageOptions, feat_attr: FeatureAttributes, image_index, cell_size
-):
+def place_feature(opts: MontageOptions, feat_attr: FeatureAttributes, image_index, cell_size):
     if feat_attr.nrows and feat_attr.ncols:
         x = opts.margin + ((feat_attr.col - 1) * cell_size[0]) + opts.padding
         y = opts.margin + ((feat_attr.row - 1) * cell_size[1]) + opts.padding
@@ -1411,12 +1364,8 @@ def place_feature(
 
 def outside_feat(col_index, row_index, feat_attr: FeatureAttributes):
     if feat_attr.nrows and feat_attr.ncols:
-        a = (col_index + 1) in range(
-            feat_attr.col, feat_attr.col + feat_attr.ncols
-        )
-        b = (row_index + 1) in range(
-            feat_attr.row, feat_attr.row + feat_attr.nrows
-        )
+        a = (col_index + 1) in range(feat_attr.col, feat_attr.col + feat_attr.ncols)
+        b = (row_index + 1) in range(feat_attr.row, feat_attr.row + feat_attr.nrows)
         return not (a and b)
     return True
 
@@ -1495,10 +1444,7 @@ def add_label(
     try:
         px = image.getpixel((at_x, at_y))
     except IndexError:
-        print(
-            "WARNING: Cannot place label. Try increasing 'padding' and/or "
-            "'margin' values."
-        )
+        print("WARNING: Cannot place label. Try increasing 'padding' and/or " "'margin' values.")
         return
 
     #  Use average of RGB to select white or black fill.
@@ -1518,9 +1464,7 @@ def create_image(opts: MontageOptions, image_num: int):
     inner_w = int(cell_w - (opts.padding * 2))
     inner_h = int(cell_h - (opts.padding * 2))
 
-    opts.log_say(
-        f"Creating new image (canvas size = {opts.canvas_width} x {opts.canvas_height} pixels)."
-    )
+    opts.log_say(f"Creating new image (canvas size = {opts.canvas_width} x {opts.canvas_height} pixels).")
     opts.log_add(f"ncols={ncols}")
     opts.log_add(f"nrows={nrows}")
     opts.log_add(f"cell_size={cell_size}")
@@ -1556,9 +1500,7 @@ def create_image(opts: MontageOptions, image_num: int):
 
         if bg_image.size != opts.canvas_size():
             #  These should match. Warn when they do not.
-            opts.log_say(
-                f"WARNING: bg_image.size={bg_image.size} but canvas_size={opts.canvas_size()}."
-            )
+            opts.log_say(f"WARNING: bg_image.size={bg_image.size} but canvas_size={opts.canvas_size()}.")
 
         bg_image = bg_image.filter(ImageFilter.BoxBlur(opts.bg_blur))
 
@@ -1567,9 +1509,7 @@ def create_image(opts: MontageOptions, image_num: int):
         image.paste(bg_image, (0, 0), mask=bg_mask)
 
     for feat in opts.featured_images:
-        place_feature(
-            opts, feat.current_attr, feat.get_next_feature_index(), cell_size
-        )
+        place_feature(opts, feat.current_attr, feat.get_next_feature_index(), cell_size)
 
     for row in range(nrows):
         for col in range(ncols):

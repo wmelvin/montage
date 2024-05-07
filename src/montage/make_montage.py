@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 DIST_NAME = "montage"
 MAX_SHUFFLE_COUNT = 999
-MAX_FEATURED_IMAGES = 4
+MAX_FEATURED_IMAGES = 5
 SKIP_MARKER = "(skip)"
 DEFAULT_ERRLOG = "montage-errors.txt"
 

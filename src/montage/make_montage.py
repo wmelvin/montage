@@ -56,6 +56,7 @@ class FeatureAttributes(NamedTuple):
     ncols: int
     row: int
     nrows: int
+    feat_alpha: int
     file_names: list[str]
 
 
@@ -73,11 +74,12 @@ class FeaturedImage:
 
 
 class Placement:
-    def __init__(self, left, top, width, height, file_name):
+    def __init__(self, left, top, width, height, alpha, file_name):
         self.x = left
         self.y = top
         self.width = width
         self.height = height
+        self.alpha = alpha
         self.file_name = file_name
 
 
@@ -116,6 +118,7 @@ class MontageOptions:
         self.write_opts = None
         self.border_width = None
         self.border_rgba = None
+        self.image_alpha = None
         self.do_zoom = None
         self.label_font = None
         self.label_size = None
@@ -193,8 +196,8 @@ class MontageOptions:
             return feature.file_names[index]
         return ""
 
-    def add_placement(self, x, y, w, h, file_name=""):
-        self._placements.append(Placement(x, y, w, h, file_name))
+    def add_placement(self, x, y, w, h, alpha, file_name=""):
+        self._placements.append(Placement(x, y, w, h, alpha, file_name))
 
     def get_placements_list(self) -> list[Placement]:
         return self._placements
@@ -397,7 +400,7 @@ class MontageOptions:
         if "f" in self.shuffle_mode:
             random.shuffle(filenames)
 
-        return FeatureAttributes(at_col, use_ncols, at_row, use_nrows, filenames)
+        return FeatureAttributes(at_col, use_ncols, at_row, use_nrows, feat.feat_alpha, filenames)
 
     def prepare(self, image_num: int):
         self._placements.clear()
@@ -463,6 +466,7 @@ class MontageOptions:
         s += f"padding={self.padding}\n"
         s += f"border_width={self.border_width}\n"
         s += f"border_rgba={self.border_rgba[0]},{self.border_rgba[1]},{self.border_rgba[2]},{self.border_rgba[3]}\n"
+        s += f"image_alpha={self.image_alpha}\n"
         s += f"do_zoom={self.do_zoom}\n"
         s += f"img1_pos={int_list_str(self.init_img1_pos)}\n"
         s += f"img1_start={self.img1_start}\n"
@@ -482,6 +486,7 @@ class MontageOptions:
                 s += f"row={feat.current_attr.row}\n"
                 s += f"num_columns={feat.current_attr.ncols}\n"
                 s += f"num_rows={feat.current_attr.nrows}\n"
+                s += f"feat_alpha={feat.current_attr.feat_alpha}\n"
                 for i in feat.current_attr.file_names[1:]:
                     s += f"{qs(i)}\n"
         else:
@@ -493,6 +498,7 @@ class MontageOptions:
             s += "# row=\n"
             s += "# num_columns=\n"
             s += "# num_rows=\n"
+            s += "# feat_alpha=\n"
 
         s += "\n[background-images]\n"
         for i in self.init_bg_images:
@@ -664,6 +670,8 @@ class MontageOptions:
 
             self.write_opts = get_opt_bool(None, "write_opts", settings)
 
+            self.image_alpha = get_opt_int(None, "image_alpha", settings)
+
             self.do_zoom = get_opt_bool(None, "do_zoom", settings)
 
             self.img1_start = get_opt_int(1, "img1_start", settings)
@@ -746,6 +754,9 @@ class MontageOptions:
 
         if self.write_opts is None:
             self.write_opts = False
+
+        if self.image_alpha is None:
+            self.image_alpha = RGBA_MAX
 
         if self.do_zoom is None:
             self.do_zoom = False
@@ -1237,18 +1248,18 @@ def get_opt_bool(default, opt_name, content):
 
 def get_feature_args(feat_args):
     if feat_args is None:
-        return FeatureAttributes(0, 0, 0, 0, [])
+        return FeatureAttributes(0, 0, 0, 0, 0, [])
 
     a = feat_args.strip("()").split(",")
 
     expect_n_fields = 5
     if len(a) != expect_n_fields:
         print("WARNING: Ignoring invalid feature attributes. " "Expected five values separated by commas.")
-        return FeatureAttributes(0, 0, 0, 0, [])
+        return FeatureAttributes(0, 0, 0, 0, 0, [])
 
     if any(not x.strip().isdigit() for x in a[:-1]):
         print("WARNING: Ignoring invalid feature attributes. " "Expected first four numeric values are numeric.")
-        return FeatureAttributes(0, 0, 0, 0, [])
+        return FeatureAttributes(0, 0, 0, 0, 0, [])
 
     filename = unquote(a[4])
     filename_list = expand_image_list([filename])
@@ -1258,6 +1269,7 @@ def get_feature_args(feat_args):
         int(a[1]),
         int(a[2]),
         int(a[3]),
+        0,
         filename_list,
     )
 
@@ -1267,6 +1279,7 @@ def get_opt_feat(section_content, default_to_none):
     ncols = get_opt_int(0, "num_columns", section_content)
     row = get_opt_int(0, "row", section_content)
     nrows = get_opt_int(0, "num_rows", section_content)
+    feat_alpha = get_opt_int(255, "feat_alpha", section_content)
     file_name = get_opt_str("", "file", section_content)
 
     file_names = [] if len(file_name) == 0 else [file_name]
@@ -1282,7 +1295,7 @@ def get_opt_feat(section_content, default_to_none):
     if (ncols == 0) and default_to_none:
         return None
 
-    return FeatureAttributes(col, ncols, row, nrows, file_names)
+    return FeatureAttributes(col, ncols, row, nrows, feat_alpha, file_names)
 
 
 def as_int_list(text: str, default=None):
@@ -1359,7 +1372,7 @@ def place_feature(opts: MontageOptions, feat_attr: FeatureAttributes, image_inde
         y = opts.margin + ((feat_attr.row - 1) * cell_size[1]) + opts.padding
         w = int((cell_size[0] * feat_attr.ncols) - (opts.padding * 2))
         h = int((cell_size[1] * feat_attr.nrows) - (opts.padding * 2))
-        opts.add_placement(x, y, w, h, feat_attr.file_names[image_index])
+        opts.add_placement(x, y, w, h, feat_attr.feat_alpha, feat_attr.file_names[image_index])
 
 
 def outside_feat(col_index, row_index, feat_attr: FeatureAttributes):
@@ -1516,7 +1529,7 @@ def create_image(opts: MontageOptions, image_num: int):
             if outside_feature(col, row, opts.featured_images):
                 x = opts.margin + (col * cell_w) + opts.padding
                 y = opts.margin + (row * cell_h) + opts.padding
-                opts.add_placement(x, y, inner_w, inner_h)
+                opts.add_placement(x, y, inner_w, inner_h, opts.image_alpha)
                 #  Placement is padded left, top, width, height.
 
     i = 0
@@ -1603,7 +1616,14 @@ def create_image(opts: MontageOptions, image_num: int):
             img = img.resize((precrop_w, precrop_h))
             img = img.crop(crop_box)
 
-        image.paste(img, new_xy)
+        if (place.alpha > 0) and (place.alpha < RGBA_MAX):
+            #  Add a mask for the alpha component.
+            tmp_mask = Image.new("RGBA", img.size, (0, 0, 0, place.alpha))
+            image.paste(img, new_xy, tmp_mask)
+        else:
+            #  If alpha is outside of the range 1 to 254 just paste the image
+            #  without a mask.
+            image.paste(img, new_xy)
 
     file_name = opts.image_file_name(image_num)
 

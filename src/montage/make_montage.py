@@ -65,6 +65,7 @@ class FeaturedImage:
         self.initial_attr: FeatureAttributes = initial_attr
         self.current_attr: FeatureAttributes = None
         self.feature_index = -1
+        self.current_index = 0
 
     def get_next_feature_index(self):
         self.feature_index += 1
@@ -139,6 +140,7 @@ class MontageOptions:
         self.row_index = -1
 
         self.featured_images: list[FeaturedImage] = []
+        self.current_feature_filenames = []
 
         self.init_images = []
         #  Initial list of image file names, as loaded from the
@@ -196,7 +198,7 @@ class MontageOptions:
             return feature.file_names[index]
         return ""
 
-    def add_placement(self, x, y, w, h, alpha, file_name=""):
+    def add_placement(self, x, y, w, h, alpha, file_name) -> None:
         self._placements.append(Placement(x, y, w, h, alpha, file_name))
 
     def get_placements_list(self) -> list[Placement]:
@@ -329,11 +331,16 @@ class MontageOptions:
         no_wrap = "n" in self.shuffle_mode
 
         if self.image_pool:
+            feature_spots = len(self.current_feature_filenames)
             while len(self.current_images) < n_images:
                 ix = self.get_next_pool_index()
                 if self.pool_wrapped and no_wrap:
                     break
-                self.current_images.append(self.image_pool[ix])
+                if feature_spots > 0 and self.image_pool[ix] in self.current_feature_filenames:
+                    #  Image in pool is a featured image so move on to the next image in the pool.
+                    feature_spots -= 1
+                else:
+                    self.current_images.append(self.image_pool[ix])
 
         if self.do_img1 and self.curr_img1_pos < 1:
             #  Image from [images-1] in shuffle (not at fixed position).
@@ -386,10 +393,14 @@ class MontageOptions:
         assert use_ncols
 
         img_nrows = self.get_nrows()
+
         at_row = feat.row
+
         while at_row > 1 and img_nrows < ((at_row - 1) + feat.nrows):
             at_row -= 1
+
         use_nrows = feat.nrows
+
         while use_nrows > 0 and img_nrows < use_nrows:
             use_nrows -= 1
 
@@ -404,12 +415,22 @@ class MontageOptions:
 
     def prepare(self, image_num: int):
         self._placements.clear()
+        self.current_feature_filenames.clear()
         self._log.clear()
         self.set_cols()
         self.set_rows()
 
         for feat in self.featured_images:
             feat.current_attr = self.prepare_feature(feat.initial_attr)
+            tries = len(feat.current_attr.file_names)
+            while tries >= 0:
+                tries -= 1
+                ix = feat.get_next_feature_index()
+                fn = feat.current_attr.file_names[ix]
+                if fn not in self.current_feature_filenames:
+                    break
+            feat.current_index = ix
+            self.current_feature_filenames.append(fn)
 
         if len(self.image_pool) == 0:  # First run.
             self.pool_index = -1
@@ -418,6 +439,7 @@ class MontageOptions:
                 random.shuffle(self.image_pool)
         elif self.pool_wrapped and self.do_shuffle_images():
             random.shuffle(self.image_pool)
+
         self._load_current_images(image_num)
         self.pool_wrapped = False
         self.set_bg_index()
@@ -556,14 +578,6 @@ class MontageOptions:
                 errors.append(f"Feature-{feat_num}: File name must be set.")
 
         if feat_attr.file_names:
-            # for file_name in feat_attr.file_names:
-            #     if not (
-            #         file_name == SKIP_MARKER
-            #         or Path(file_name).expanduser().resolve().exists()
-            #     ):
-            #         errors.append(
-            #             f"Feature-{feat_num}: Image file not found: '{file_name}'."
-            #         )
             errors.extend(
                 f"Feature-{feat_num}: Image file not found: '{file_name}'."
                 for file_name in feat_attr.file_names
@@ -582,29 +596,18 @@ class MontageOptions:
             if not Path(self.output_dir).is_dir():
                 errors.append(f"Output folder not a directory: '{self.output_dir}'.")
 
-        # for file_name in self.init_images:
-        #     if (file_name.strip() != SKIP_MARKER) and (not Path(file_name).expanduser().resolve().exists()):
-        #         errors.append(f"Image file not found: '{file_name}'.")
         errors.extend(
             f"Image file not found: '{file_name}'."
             for file_name in self.init_images
             if (file_name.strip() != SKIP_MARKER) and (not Path(file_name).expanduser().resolve().exists())
         )
 
-        # for file_name in self.init_images1:
-        #     if (file_name.strip() != SKIP_MARKER) and (not Path(file_name).expanduser().resolve().exists()):
-        #         errors.append(f"Image file not found: '{file_name}'.")
         errors.extend(
             f"Image file not found: '{file_name}'."
             for file_name in self.init_images1
             if (file_name.strip() != SKIP_MARKER) and (not Path(file_name).expanduser().resolve().exists())
         )
 
-        # for file_name in self.init_bg_images:
-        #     if not Path(file_name).expanduser().resolve().exists():
-        #         errors.append(
-        #             f"Background image file not found: '{file_name}'."
-        #         )
         errors.extend(
             f"Background image file not found: '{file_name}'."
             for file_name in self.init_bg_images
@@ -1376,6 +1379,7 @@ def place_feature(opts: MontageOptions, feat_attr: FeatureAttributes, image_inde
 
 
 def outside_feat(col_index, row_index, feat_attr: FeatureAttributes):
+    """Returns True if the given cell is outside the feature area."""
     if feat_attr.nrows and feat_attr.ncols:
         a = (col_index + 1) in range(feat_attr.col, feat_attr.col + feat_attr.ncols)
         b = (row_index + 1) in range(feat_attr.row, feat_attr.row + feat_attr.nrows)
@@ -1384,10 +1388,7 @@ def outside_feat(col_index, row_index, feat_attr: FeatureAttributes):
 
 
 def outside_feature(col_index, row_index, feat_imgs: list[FeaturedImage]):
-    # for feat in feat_imgs:
-    #     if not outside_feat(col_index, row_index, feat.current_attr):
-    #         return False
-    # return True
+    """Returns True if the given cell is outside the feature area for all featured images."""
     return all(outside_feat(col_index, row_index, feat.current_attr) for feat in feat_imgs)
 
 
@@ -1419,7 +1420,7 @@ def get_crop_box(current_size, target_size):
     return (x1, y1, x2, y2)
 
 
-def add_border(image, border_size, border_xy, opts):
+def add_border(image, border_size, border_xy, opts: MontageOptions) -> None:
     border_image = Image.new("RGB", border_size, opts.border_rgb())
 
     border_mask = Image.new("RGBA", border_size, opts.border_mask_rgba())
@@ -1468,6 +1469,7 @@ def add_label(
 
 
 def create_image(opts: MontageOptions, image_num: int):
+    """Create a single montage image based on the attributes in opts."""
     ncols = opts.get_ncols()
     nrows = opts.get_nrows()
     cell_w = int((opts.canvas_width - (opts.margin * 2)) / ncols)
@@ -1522,14 +1524,14 @@ def create_image(opts: MontageOptions, image_num: int):
         image.paste(bg_image, (0, 0), mask=bg_mask)
 
     for feat in opts.featured_images:
-        place_feature(opts, feat.current_attr, feat.get_next_feature_index(), cell_size)
+        place_feature(opts, feat.current_attr, feat.current_index, cell_size)
 
     for row in range(nrows):
         for col in range(ncols):
             if outside_feature(col, row, opts.featured_images):
                 x = opts.margin + (col * cell_w) + opts.padding
                 y = opts.margin + (row * cell_h) + opts.padding
-                opts.add_placement(x, y, inner_w, inner_h, opts.image_alpha)
+                opts.add_placement(x, y, inner_w, inner_h, opts.image_alpha, "")
                 #  Placement is padded left, top, width, height.
 
     i = 0

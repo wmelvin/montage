@@ -29,7 +29,11 @@ class Lawg:
         self.entries: list[str] = []
 
     def add(self, text: str):
-        s = f"[{datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}]: {text}" if self.include_timestamp else text  # noqa: DTZ005
+        s = (
+            f"[{datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}]: {text}"
+            if self.include_timestamp
+            else text
+        )  # noqa: DTZ005
 
         if self.do_write_now:
             self.write_now(s)
@@ -93,7 +97,11 @@ class ImageList:
 
     def _get_same_path(self, list_item: ImageListItem):
         for i in self.items:
-            if i.tried_to_find and (len(i.new_path) > 0) and i.orig_parent == list_item.orig_parent:
+            if (
+                i.tried_to_find
+                and (len(i.new_path) > 0)
+                and i.orig_parent == list_item.orig_parent
+            ):
                 return str(Path(i.new_path).parent)
         return ""
 
@@ -255,7 +263,8 @@ class ImageList:
 
 def get_args(arglist=None):
     ap = argparse.ArgumentParser(
-        description="Search for missing image files listed in a " "settings/options file for montage.py."
+        description="Search for missing image files listed in a "
+        "settings/options file for montage.py."
     )
 
     ap.add_argument("opt_file", help="Name of settings/options file.")
@@ -278,7 +287,7 @@ def get_args(arglist=None):
         type=str,
         default=str(Path.cwd()),
         action="store",
-        help="Optional. Directory for output files. Default is current " "directory.",
+        help="Optional. Directory for output files. Default is current directory.",
     )
 
     return ap.parse_args(arglist)
@@ -360,18 +369,34 @@ def main(arglist=None):
     image_list.items += [
         ImageListItem("background-images", a)
         for a in expand_image_list(
-            [unquote(b) for b in get_option_entries("[background-images]", file_text) if (b != "(skip)")]
+            [
+                unquote(b)
+                for b in get_option_entries("[background-images]", file_text)
+                if (b != "(skip)")
+            ]
         )
     ]
 
     image_list.items += [
         ImageListItem("images", a)
-        for a in expand_image_list([unquote(b) for b in get_option_entries("[images]", file_text) if (b != "(skip)")])
+        for a in expand_image_list(
+            [
+                unquote(b)
+                for b in get_option_entries("[images]", file_text)
+                if (b != "(skip)")
+            ]
+        )
     ]
 
     image_list.items += [
         ImageListItem("images-1", a)
-        for a in expand_image_list([unquote(b) for b in get_option_entries("[images-1]", file_text) if (b != "(skip)")])
+        for a in expand_image_list(
+            [
+                unquote(b)
+                for b in get_option_entries("[images-1]", file_text)
+                if (b != "(skip)")
+            ]
+        )
     ]
 
     log.add(f"search_dir = '{args.search_dir}'")

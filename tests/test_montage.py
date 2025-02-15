@@ -325,7 +325,9 @@ def skipif_label_font_not_found():
         print(f"Cannot load font '{LABEL_FONT_NAME}'.")  # noqa: T201
         font = None
 
-    return pytest.mark.skipif(font is None, reason=f"Depends on '{LABEL_FONT_NAME}' font installed")
+    return pytest.mark.skipif(
+        font is None, reason=f"Depends on '{LABEL_FONT_NAME}' font installed"
+    )
 
 
 @skipif_label_font_not_found()
@@ -371,7 +373,13 @@ def test_add_label(tmp_path, generated_images_path, num, margin, padding, border
     opt_file = tmp_path / f"options-{num}.txt"
     opt_file.write_text(
         template.format(
-            str(out_path), str(generated_images_path), out_file_name, margin, padding, border, LABEL_FONT_NAME
+            str(out_path),
+            str(generated_images_path),
+            out_file_name,
+            margin,
+            padding,
+            border,
+            LABEL_FONT_NAME,
         )
     )
     args = ["-s", str(opt_file)]

@@ -336,7 +336,10 @@ class MontageOptions:
                 ix = self.get_next_pool_index()
                 if self.pool_wrapped and no_wrap:
                     break
-                if feature_spots > 0 and self.image_pool[ix] in self.current_feature_filenames:
+                if (
+                    feature_spots > 0
+                    and self.image_pool[ix] in self.current_feature_filenames
+                ):
                     #  Image in pool is a featured image so move on to the next image in the pool.
                     feature_spots -= 1
                 else:
@@ -411,7 +414,9 @@ class MontageOptions:
         if "f" in self.shuffle_mode:
             random.shuffle(filenames)
 
-        return FeatureAttributes(at_col, use_ncols, at_row, use_nrows, feat.feat_alpha, filenames)
+        return FeatureAttributes(
+            at_col, use_ncols, at_row, use_nrows, feat.feat_alpha, filenames
+        )
 
     def prepare(self, image_num: int):
         self._placements.clear()
@@ -452,7 +457,11 @@ class MontageOptions:
         return self._run_dt.astimezone().strftime(fmt_str)
 
     def image_file_name(self, image_num):
-        out_dir = Path(self.output_dir).expanduser().resolve() if self.output_dir else Path.cwd()
+        out_dir = (
+            Path(self.output_dir).expanduser().resolve()
+            if self.output_dir
+            else Path.cwd()
+        )
 
         assert out_dir.is_dir
         assert out_dir.exists()
@@ -466,10 +475,14 @@ class MontageOptions:
 
         if self.stamp_mode in [StampMode.LEFT, StampMode.LEFT_USEC]:
             #  Mode 1: date_time stamp at left of file name.
-            p = Path(f"{self._timestamp_str()}_{p.with_suffix('')}").with_suffix(p.suffix)
+            p = Path(f"{self._timestamp_str()}_{p.with_suffix('')}").with_suffix(
+                p.suffix
+            )
         elif self.stamp_mode in [StampMode.RIGHT, StampMode.RIGHT_USEC]:
             #  Mode 2: date_time stamp at right of file name.
-            p = Path(f"{p.with_suffix('')}_{self._timestamp_str()}").with_suffix(p.suffix)
+            p = Path(f"{p.with_suffix('')}_{self._timestamp_str()}").with_suffix(
+                p.suffix
+            )
 
         return str(out_dir.joinpath(p))
 
@@ -503,7 +516,7 @@ class MontageOptions:
         if self.featured_images:
             for feat_num, feat in enumerate(self.featured_images, start=1):
                 s += f"\n[feature-{feat_num}]\n"
-                s += "file=" f"{qs(self.get_feature_filename(feat.current_attr, 0))}\n"
+                s += f"file={qs(self.get_feature_filename(feat.current_attr, 0))}\n"
                 s += f"column={feat.current_attr.col}\n"
                 s += f"row={feat.current_attr.row}\n"
                 s += f"num_columns={feat.current_attr.ncols}\n"
@@ -572,7 +585,8 @@ class MontageOptions:
         if any(x > 0 for x in numeric_attrs):
             if any(x <= 0 for x in numeric_attrs):
                 errors.append(
-                    f"Feature-{feat_num}: All column and row settings must " "be set to not-zero values if any are set."
+                    f"Feature-{feat_num}: All column and row settings must "
+                    "be set to not-zero values if any are set."
                 )
             if len(self.get_feature_filename(feat_attr, 0)) == 0:
                 errors.append(f"Feature-{feat_num}: File name must be set.")
@@ -581,7 +595,10 @@ class MontageOptions:
             errors.extend(
                 f"Feature-{feat_num}: Image file not found: '{file_name}'."
                 for file_name in feat_attr.file_names
-                if not (file_name == SKIP_MARKER or Path(file_name).expanduser().resolve().exists())
+                if not (
+                    file_name == SKIP_MARKER
+                    or Path(file_name).expanduser().resolve().exists()
+                )
             )
 
         return errors
@@ -599,13 +616,15 @@ class MontageOptions:
         errors.extend(
             f"Image file not found: '{file_name}'."
             for file_name in self.init_images
-            if (file_name.strip() != SKIP_MARKER) and (not Path(file_name).expanduser().resolve().exists())
+            if (file_name.strip() != SKIP_MARKER)
+            and (not Path(file_name).expanduser().resolve().exists())
         )
 
         errors.extend(
             f"Image file not found: '{file_name}'."
             for file_name in self.init_images1
-            if (file_name.strip() != SKIP_MARKER) and (not Path(file_name).expanduser().resolve().exists())
+            if (file_name.strip() != SKIP_MARKER)
+            and (not Path(file_name).expanduser().resolve().exists())
         )
 
         errors.extend(
@@ -691,11 +710,17 @@ class MontageOptions:
                 if temp_feat:
                     self.featured_images.append(FeaturedImage(temp_feat))
 
-            self.init_images += [unquote(i) for i in get_option_entries("[images]", file_text)]
+            self.init_images += [
+                unquote(i) for i in get_option_entries("[images]", file_text)
+            ]
 
-            self.init_images1 += [unquote(i) for i in get_option_entries("[images-1]", file_text)]
+            self.init_images1 += [
+                unquote(i) for i in get_option_entries("[images-1]", file_text)
+            ]
 
-            self.init_bg_images += [unquote(i) for i in get_option_entries("[background-images]", file_text)]
+            self.init_bg_images += [
+                unquote(i) for i in get_option_entries("[background-images]", file_text)
+            ]
 
     def _set_defaults(self, defaults: MontageDefaults):
         #  Use defaults for options not already set.
@@ -847,11 +872,15 @@ class MontageOptions:
 
             if args.feature_1 is not None:
                 assert len(self.featured_images) < MAX_FEATURED_IMAGES
-                self.featured_images.append(FeaturedImage(get_feature_args(args.feature_1)))
+                self.featured_images.append(
+                    FeaturedImage(get_feature_args(args.feature_1))
+                )
 
             if args.feature_2 is not None:
                 assert len(self.featured_images) < MAX_FEATURED_IMAGES
-                self.featured_images.append(FeaturedImage(get_feature_args(args.feature_2)))
+                self.featured_images.append(
+                    FeaturedImage(get_feature_args(args.feature_2))
+                )
 
             self.init_images = [i for i in args.images if i] + self.init_images
 
@@ -869,7 +898,7 @@ class MontageOptions:
 # ----------------------------------------------------------------------
 
 
-def app_title():
+def app_title() -> str:
     try:
         ver = metadata.version(DIST_NAME)
     except metadata.PackageNotFoundError:
@@ -877,9 +906,11 @@ def app_title():
     return f"make-montage ({Path(__file__).name} v{ver})"
 
 
-def error_exit(error_message: str, error_list: list[str]):
+def error_exit(error_message: str, error_list: list[str]) -> None:
     errs = []
-    errs.append(f"\n[{datetime.now(timezone.utc).astimezone().strftime('%Y-%m-%d %H:%M')}]")
+    errs.append(
+        f"\n[{datetime.now(timezone.utc).astimezone().strftime('%Y-%m-%d %H:%M')}]"
+    )
     errs.append(f"HALTED {app_title()}")
 
     if error_message:
@@ -956,7 +987,9 @@ def warn_old_settings(settings):
         if len(a) == LEN_NAME_VALUE_SPLIT:
             setting_name = a[0].strip()
             if setting_name in old_settings:
-                print(f"WARNING: Obsolete setting '{setting_name}': {old_settings[setting_name]}")
+                print(
+                    f"WARNING: Obsolete setting '{setting_name}': {old_settings[setting_name]}"
+                )
 
 
 def get_arguments(arglist=None):
@@ -969,7 +1002,8 @@ def get_arguments(arglist=None):
         "images",
         nargs="*",
         action="store",
-        help="Images files to include in the montage image." " Multiple files can be specified.",
+        help="Images files to include in the montage image."
+        " Multiple files can be specified.",
     )
 
     ap.add_argument(
@@ -1096,7 +1130,8 @@ def get_arguments(arglist=None):
         dest="feature_1",
         type=str,
         action="store",
-        help="Attributes for first featured image as" " (col, ncols, row, nrows, file_name).",
+        help="Attributes for first featured image as"
+        " (col, ncols, row, nrows, file_name).",
     )
 
     ap.add_argument(
@@ -1104,7 +1139,8 @@ def get_arguments(arglist=None):
         dest="feature_2",
         type=str,
         action="store",
-        help="Attributes for second featured image as" " (col, ncols, row, nrows, file_name).",
+        help="Attributes for second featured image as"
+        " (col, ncols, row, nrows, file_name).",
     )
 
     ap.add_argument(
@@ -1257,11 +1293,17 @@ def get_feature_args(feat_args):
 
     expect_n_fields = 5
     if len(a) != expect_n_fields:
-        print("WARNING: Ignoring invalid feature attributes. " "Expected five values separated by commas.")
+        print(
+            "WARNING: Ignoring invalid feature attributes. "
+            "Expected five values separated by commas."
+        )
         return FeatureAttributes(0, 0, 0, 0, 0, [])
 
     if any(not x.strip().isdigit() for x in a[:-1]):
-        print("WARNING: Ignoring invalid feature attributes. " "Expected first four numeric values are numeric.")
+        print(
+            "WARNING: Ignoring invalid feature attributes. "
+            "Expected first four numeric values are numeric."
+        )
         return FeatureAttributes(0, 0, 0, 0, 0, [])
 
     filename = unquote(a[4])
@@ -1369,16 +1411,24 @@ def get_rgba(default, arg_str):
     return default
 
 
-def place_feature(opts: MontageOptions, feat_attr: FeatureAttributes, image_index, cell_size):
+def place_feature(
+    opts: MontageOptions,
+    feat_attr: FeatureAttributes,
+    image_index: int,
+    cell_size: tuple[int, int],
+) -> None:
+    """Place a featured image in the montage image."""
     if feat_attr.nrows and feat_attr.ncols:
         x = opts.margin + ((feat_attr.col - 1) * cell_size[0]) + opts.padding
         y = opts.margin + ((feat_attr.row - 1) * cell_size[1]) + opts.padding
         w = int((cell_size[0] * feat_attr.ncols) - (opts.padding * 2))
         h = int((cell_size[1] * feat_attr.nrows) - (opts.padding * 2))
-        opts.add_placement(x, y, w, h, feat_attr.feat_alpha, feat_attr.file_names[image_index])
+        opts.add_placement(
+            x, y, w, h, feat_attr.feat_alpha, feat_attr.file_names[image_index]
+        )
 
 
-def outside_feat(col_index, row_index, feat_attr: FeatureAttributes):
+def outside_feat(col_index: int, row_index: int, feat_attr: FeatureAttributes) -> bool:
     """Returns True if the given cell is outside the feature area."""
     if feat_attr.nrows and feat_attr.ncols:
         a = (col_index + 1) in range(feat_attr.col, feat_attr.col + feat_attr.ncols)
@@ -1387,19 +1437,29 @@ def outside_feat(col_index, row_index, feat_attr: FeatureAttributes):
     return True
 
 
-def outside_feature(col_index, row_index, feat_imgs: list[FeaturedImage]):
+def outside_feature(
+    col_index: int, row_index: int, feat_imgs: list[FeaturedImage]
+) -> bool:
     """Returns True if the given cell is outside the feature area for all featured images."""
-    return all(outside_feat(col_index, row_index, feat.current_attr) for feat in feat_imgs)
+    return all(
+        outside_feat(col_index, row_index, feat.current_attr) for feat in feat_imgs
+    )
 
 
-def get_new_size_zoom(current_size, target_size):
+def get_new_size_zoom(
+    current_size: tuple[int, int], target_size: tuple[int, int]
+) -> tuple[int, int]:
+    """Returns a new size that is the same aspect ratio as the current size, but zoomed to fill the target size."""
     scale_w = target_size[0] / current_size[0]
     scale_h = target_size[1] / current_size[1]
     scale_by = max(scale_w, scale_h)
     return (int(current_size[0] * scale_by), int(current_size[1] * scale_by))
 
 
-def get_crop_box(current_size, target_size):
+def get_crop_box(
+    current_size: tuple[int, int], target_size: tuple[int, int]
+) -> tuple[int, int, int, int]:
+    """Returns box coordinates to crop the current size to the target size."""
     cur_w, cur_h = current_size
     trg_w, trg_h = target_size
 
@@ -1420,11 +1480,15 @@ def get_crop_box(current_size, target_size):
     return (x1, y1, x2, y2)
 
 
-def add_border(image, border_size, border_xy, opts: MontageOptions) -> None:
+def add_border(
+    image: Image.Image,
+    border_size: tuple[int, int],
+    border_xy: tuple[int, int],
+    opts: MontageOptions,
+) -> None:
+    """Add a border to the given image."""
     border_image = Image.new("RGB", border_size, opts.border_rgb())
-
     border_mask = Image.new("RGBA", border_size, opts.border_mask_rgba())
-
     image.paste(border_image, border_xy, mask=border_mask)
 
 
@@ -1434,7 +1498,8 @@ def add_label(
     at_x: int,
     at_y: int,
     opts: MontageOptions,
-):
+) -> None:
+    """Add a text label to the given image."""
     assert opts.label_font
     assert opts.label_size
 
@@ -1458,7 +1523,10 @@ def add_label(
     try:
         px = image.getpixel((at_x, at_y))
     except IndexError:
-        print("WARNING: Cannot place label. Try increasing 'padding' and/or " "'margin' values.")
+        print(
+            "WARNING: Cannot place label. Try increasing 'padding' and/or "
+            "'margin' values."
+        )
         return
 
     #  Use average of RGB to select white or black fill.
@@ -1468,7 +1536,7 @@ def add_label(
     draw.text((at_x, at_y), label_text, font=font, fill=fill_rgba)
 
 
-def create_image(opts: MontageOptions, image_num: int):
+def create_image(opts: MontageOptions, image_num: int) -> None:
     """Create a single montage image based on the attributes in opts."""
     ncols = opts.get_ncols()
     nrows = opts.get_nrows()
@@ -1479,7 +1547,9 @@ def create_image(opts: MontageOptions, image_num: int):
     inner_w = int(cell_w - (opts.padding * 2))
     inner_h = int(cell_h - (opts.padding * 2))
 
-    opts.log_say(f"Creating new image (canvas size = {opts.canvas_width} x {opts.canvas_height} pixels).")
+    opts.log_say(
+        f"Creating new image (canvas size = {opts.canvas_width} x {opts.canvas_height} pixels)."
+    )
     opts.log_add(f"ncols={ncols}")
     opts.log_add(f"nrows={nrows}")
     opts.log_add(f"cell_size={cell_size}")
@@ -1515,7 +1585,9 @@ def create_image(opts: MontageOptions, image_num: int):
 
         if bg_image.size != opts.canvas_size():
             #  These should match. Warn when they do not.
-            opts.log_say(f"WARNING: bg_image.size={bg_image.size} but canvas_size={opts.canvas_size()}.")
+            opts.log_say(
+                f"WARNING: bg_image.size={bg_image.size} but canvas_size={opts.canvas_size()}."
+            )
 
         bg_image = bg_image.filter(ImageFilter.BoxBlur(opts.bg_blur))
 
@@ -1589,9 +1661,17 @@ def create_image(opts: MontageOptions, image_num: int):
             new_w = int(img.width * scale_by)
             new_h = int(img.height * scale_by)
 
-            new_x = place.x + int((place.width - new_w) / 2) if new_w < place.width else place.x
+            new_x = (
+                place.x + int((place.width - new_w) / 2)
+                if new_w < place.width
+                else place.x
+            )
 
-            new_y = place.y + int((place.height - new_h) / 2) if new_h < place.height else place.y
+            new_y = (
+                place.y + int((place.height - new_h) / 2)
+                if new_h < place.height
+                else place.y
+            )
 
             if opts.border_width > 0:
                 border_size = (new_w, new_h)

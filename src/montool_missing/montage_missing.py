@@ -45,13 +45,13 @@ class Lawg:
         self.add(text)
 
     def write_now(self, text: str):
-        with open(self.file_name, "a") as f:
+        with Path(self.file_name).open("a") as f:
             f.write(f"{text}\n")
 
     def write_out(self):
         if len(self.entries) > 0:
             print(f"Writing '{self.file_name}'")
-            with open(self.file_name, "w") as f:
+            with Path(self.file_name).open("w") as f:
                 for entry in self.entries:
                     f.write(f"{entry}\n")
 
@@ -179,11 +179,11 @@ class ImageList:
 
     def write_items_txt(self, suffix: str):
         file_name = f"{app_name}_{run_dt}_ITEMS_{suffix}.txt"
-        file_name = Path(self.output_dir).joinpath(file_name)
+        file_path = Path(self.output_dir).joinpath(file_name)
 
-        self.log.say(f"Writing '{file_name}'")
+        self.log.say(f"Writing '{file_path}'")
 
-        with open(file_name, "w") as f:
+        with file_path.open("w") as f:
             for i in self.items:
                 f.write(f"{i}\n")
                 f.write(f"{i.as_str()}\n")
@@ -236,9 +236,9 @@ class ImageList:
         #  first to see if there are image files that could not be found in
         #  a new location.
         file_name = f"{app_name}_{run_dt}_OUTPUT_A.txt"
-        file_name = Path(self.output_dir).joinpath(file_name)
-        self.log.say(f"Writing '{file_name}'")
-        with open(file_name, "w") as f:
+        file_path = Path(self.output_dir).joinpath(file_name)
+        self.log.say(f"Writing '{file_path}'")
+        with file_path.open("w") as f:
             f.write(f"# From file '{self.from_file}':\n\n")
             f.write(self._get_commented("feature-1"))
             f.write(self._get_commented("feature-2"))
@@ -252,9 +252,9 @@ class ImageList:
         #  is useful for making a copy-and-paste update to the original
         #  settings file.
         file_name = f"{app_name}_{run_dt}_OUTPUT_B.txt"
-        file_name = Path(self.output_dir).joinpath(file_name)
-        self.log.say(f"Writing '{file_name}'")
-        with open(file_name, "w") as f:
+        file_path = Path(self.output_dir).joinpath(file_name)
+        self.log.say(f"Writing '{file_path}'")
+        with file_path.open("w") as f:
             f.write(f"# From file '{self.from_file}':\n\n")
             f.write(self._get_section_bare("background-images"))
             f.write(self._get_section_bare("images"))
@@ -347,7 +347,7 @@ def main(arglist=None):
     log.add(f"Running {app_title}")
     log.say(f"Reading '{args.opt_file}'")
 
-    with open(opt_path) as f:
+    with opt_path.open() as f:
         file_text = f.readlines()
 
     image_list = ImageList(args.opt_file, output_dir, log)

@@ -11,7 +11,7 @@ requires-python = ">=3.8"
 license = "MIT"
 keywords = ["image generation", "montage"]
 authors = [
-  { name = "Bill Melvin", email = "bill@sbillmelvin.com" },
+  { name = "Bill Melvin", email = "bill@billmelvin.com" },
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -75,10 +75,6 @@ check = "mypy --install-types --non-interactive {args:src/montage tests}"
 [tool.hatch.envs.hatch-static-analysis]
 config-path = "none"
 
-[tool.ruff]
-line-length = 88
-indent-width = 4
-
 [tool.coverage.run]
 source_pkgs = ["montage", "tests"]
 branch = true
@@ -97,3 +93,22 @@ exclude_lines = [
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
 ]
+
+[tool.ruff]
+lint.select = ["I001"]
+
+# lint.ignore = [
+#     "T201",     # No print statements.
+#     "ISC001",   # Single-line-implicit-string-concatenation
+#     "PLR0912",  # Too many branches.
+#     "PLR0913",  # Too many args.
+#     "PLR0915",  # Too many statements.
+#     "S311",     # Weak random numbers are okay here (not doing cryptography).
+#     "S101",     # Replacing assert statements is a non-critical to-do.
+# ]
+
+# [tool.ruff.lint.per-file-ignores]
+# "**/test_*.py" = [
+#     "S101",     # Assert okay in tests.
+#     "PLR2004",  # magic value
+# ]

@@ -1,7 +1,8 @@
+
 @default:
   @just --list
 
-@build: lint check testm
+@build: check test
   hatch build
 
 # Check formatting

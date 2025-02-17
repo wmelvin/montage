@@ -5,10 +5,10 @@ from importlib import reload
 from pathlib import Path
 from textwrap import dedent
 
-import make_test_images
 import pytest
 from PIL import ImageFont
 
+import make_test_images
 from montage import make_montage
 
 LABEL_FONT_NAME = "DejaVuSansMono.ttf"

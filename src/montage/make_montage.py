@@ -121,6 +121,7 @@ class MontageOptions:
         self.border_rgba = None
         self.image_alpha = None
         self.do_zoom = None
+        self.feat_unique = None
         self.label_font = None
         self.label_size = None
         self.init_img1_pos = None
@@ -224,7 +225,7 @@ class MontageOptions:
     def border_mask_rgba(self):
         return (0, 0, 0, self.border_rgba[3])
 
-    def set_cols(self):
+    def set_cols(self) -> None:
         n = len(self.init_ncols)
         if "c" in self.shuffle_mode:
             if n == 1:
@@ -240,7 +241,7 @@ class MontageOptions:
 
         assert self.cols
 
-    def set_rows(self):
+    def set_rows(self) -> None:
         n = len(self.init_nrows)
         if "r" in self.shuffle_mode:
             if n == 1:
@@ -256,13 +257,13 @@ class MontageOptions:
 
         assert self.rows
 
-    def _get_img1_freq(self):
+    def _get_img1_freq(self) -> int:
         self.img1_freq_index += 1
         if len(self.init_img1_freq) <= self.img1_freq_index:
             self.img1_freq_index = 0
         return self.init_img1_freq[self.img1_freq_index]
 
-    def _set_img1_pos(self, image_num: int):
+    def _set_img1_pos(self, image_num: int) -> None:
         self.do_img1 = False
         self.curr_img1_pos = 0
 
@@ -293,28 +294,28 @@ class MontageOptions:
             self.img1_pos_index = 0
         self.curr_img1_pos = self.init_img1_pos[self.img1_pos_index]
 
-    def get_ncols(self):
+    def get_ncols(self) -> int:
         if self.cols is None:
             self.set_cols()
         return self.cols
 
-    def get_nrows(self):
+    def get_nrows(self) -> int:
         if self.rows is None:
             self.set_rows()
         return self.rows
 
-    def _feature_cell_count(self):
+    def _feature_cell_count(self) -> int:
         n = 0
         for feat in self.featured_images:
             n += feat.current_attr.ncols * feat.current_attr.nrows
         return n
 
-    def _current_image_count(self):
+    def _current_image_count(self) -> int:
         n = self.get_ncols() * self.get_nrows()
         n -= self._feature_cell_count()
         return n
 
-    def _load_current_images(self, image_num: int):
+    def _load_current_images(self, image_num: int) -> None:
         self.current_images.clear()
         n_images = self._current_image_count()
 
@@ -337,10 +338,12 @@ class MontageOptions:
                 if self.pool_wrapped and no_wrap:
                     break
                 if (
-                    feature_spots > 0
+                    self.feat_unique
+                    and feature_spots > 0
                     and self.image_pool[ix] in self.current_feature_filenames
                 ):
-                    #  Image in pool is a featured image so move on to the next image in the pool.
+                    #  Image in pool is a featured image so move on to the next image
+                    #  in the pool.
                     feature_spots -= 1
                 else:
                     self.current_images.append(self.image_pool[ix])
@@ -360,19 +363,19 @@ class MontageOptions:
                 self.init_images1[self.get_next_im1_index()],
             )
 
-    def do_shuffle_images(self):
+    def do_shuffle_images(self) -> bool:
         return "i" in self.shuffle_mode
 
-    def do_shuffle_bg_images(self):
+    def do_shuffle_bg_images(self) -> bool:
         return "b" in self.shuffle_mode
 
-    def get_montages_count(self):
+    def get_montages_count(self) -> int:
         return min(self.shuffle_count, MAX_SHUFFLE_COUNT)
 
-    def log_add(self, message):
+    def log_add(self, message) -> None:
         self._log.append(message)
 
-    def log_say(self, message):
+    def log_say(self, message) -> None:
         print(message)
         self._log.append(message)
 
@@ -418,7 +421,7 @@ class MontageOptions:
             at_col, use_ncols, at_row, use_nrows, feat.feat_alpha, filenames
         )
 
-    def prepare(self, image_num: int):
+    def prepare(self, image_num: int) -> None:
         self._placements.clear()
         self.current_feature_filenames.clear()
         self._log.clear()
@@ -432,6 +435,8 @@ class MontageOptions:
                 tries -= 1
                 ix = feat.get_next_feature_index()
                 fn = feat.current_attr.file_names[ix]
+                if not self.feat_unique:
+                    break
                 if fn not in self.current_feature_filenames:
                     break
             feat.current_index = ix
@@ -493,14 +498,20 @@ class MontageOptions:
         s += f"output_dir={qs(self.output_dir)}\n"
         s += f"canvas_width={self.canvas_width}\n"
         s += f"canvas_height={self.canvas_height}\n"
-        s += f"background_rgba={self.bg_rgba[0]},{self.bg_rgba[1]},{self.bg_rgba[2]},{self.bg_rgba[3]}\n"
+        s += (
+            f"background_rgba={self.bg_rgba[0]},{self.bg_rgba[1]},{self.bg_rgba[2]},"
+            f"{self.bg_rgba[3]}\n"
+        )
         s += f"background_blur={self.bg_blur}\n"
         s += f"columns={int_list_str(self.init_ncols)}\n"
         s += f"rows={int_list_str(self.init_nrows)}\n"
         s += f"margin={self.margin}\n"
         s += f"padding={self.padding}\n"
         s += f"border_width={self.border_width}\n"
-        s += f"border_rgba={self.border_rgba[0]},{self.border_rgba[1]},{self.border_rgba[2]},{self.border_rgba[3]}\n"
+        s += (
+            f"border_rgba={self.border_rgba[0]},{self.border_rgba[1]},"
+            f"{self.border_rgba[2]},{self.border_rgba[3]}\n"
+        )
         s += f"image_alpha={self.image_alpha}\n"
         s += f"do_zoom={self.do_zoom}\n"
         s += f"img1_pos={int_list_str(self.init_img1_pos)}\n"
@@ -512,6 +523,7 @@ class MontageOptions:
         s += f"shuffle_count={self.shuffle_count}\n"
         s += f"stamp_mode={self.stamp_mode.value}\n"
         s += f"write_opts={self.write_opts}\n"
+        s += f"feat_unique={self.feat_unique}\n"
 
         if self.featured_images:
             for feat_num, feat in enumerate(self.featured_images, start=1):
@@ -553,15 +565,14 @@ class MontageOptions:
         if self.write_opts:
             p = Path(image_file_name)
 
-            file_name = str(Path(f"{p.with_suffix('')}_options").with_suffix(".txt"))
+            out_file = Path(f"{p.with_suffix('')}_options").with_suffix(".txt")
+            out_time = (
+                datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M")
+            )
 
-            print(f"\nWriting options to '{file_name}'\n")
-            with open(file_name, "w") as f:
-                f.write(
-                    f"# Created {datetime.now(timezone.utc).astimezone().strftime('%Y-%m-%d %H:%M')}"
-                    f" by {app_title()}\n"
-                )
-
+            print(f"\nWriting options to '{out_file}'\n")
+            with out_file.open("w") as f:
+                f.write(f"# Created {out_time} by {app_title()}\n")
                 f.write(self._options_as_str())
 
                 f.write("\n\n[LOG: CURRENT-IMAGES]\n")
@@ -647,7 +658,7 @@ class MontageOptions:
 
             print(f"Load settings from '{p.name}' in '{p.parent}'.")
 
-            with open(p) as f:
+            with p.open() as f:
                 file_text = f.readlines()
 
             settings = get_option_entries("[settings]", file_text)
@@ -695,6 +706,8 @@ class MontageOptions:
             self.image_alpha = get_opt_int(None, "image_alpha", settings)
 
             self.do_zoom = get_opt_bool(None, "do_zoom", settings)
+
+            self.feat_unique = get_opt_bool(None, "feat_unique", settings)
 
             self.img1_start = get_opt_int(1, "img1_start", settings)
 
@@ -789,6 +802,9 @@ class MontageOptions:
         if self.do_zoom is None:
             self.do_zoom = False
 
+        if self.feat_unique is None:
+            self.feat_unique = False
+
         if self.init_img1_freq is None:
             self.init_img1_freq = [1]
 
@@ -867,6 +883,9 @@ class MontageOptions:
             if (args.do_zoom is not None) and args.do_zoom:
                 self.do_zoom = True
 
+            if (args.feat_unique is not None) and args.feat_unique:
+                self.feat_unique = True
+
             #  Only support 2 featured images via command-line args.
             #  TODO: Accept more than two?
 
@@ -929,7 +948,7 @@ def error_exit(error_message: str, error_list: list[str]) -> None:
 
     if errlog.file_name:
         print(f"\nWriting '{errlog.file_name}'.\n")
-        with open(errlog.file_name, "a") as t:
+        with Path(errlog.file_name).open("a") as t:
             for e in errs:
                 t.write(f"{e}\n")
 
@@ -953,7 +972,7 @@ def get_list_from_file(file_name):
 
     result = []
 
-    with open(p) as f:
+    with p.open() as f:
         file_text = f.readlines()
 
     for line in file_text:
@@ -988,7 +1007,8 @@ def warn_old_settings(settings):
             setting_name = a[0].strip()
             if setting_name in old_settings:
                 print(
-                    f"WARNING: Obsolete setting '{setting_name}': {old_settings[setting_name]}"
+                    "WARNING: Obsolete setting "
+                    f"'{setting_name}': {old_settings[setting_name]}"
                 )
 
 
@@ -1141,6 +1161,14 @@ def get_arguments(arglist=None):
         action="store",
         help="Attributes for second featured image as"
         " (col, ncols, row, nrows, file_name).",
+    )
+
+    ap.add_argument(
+        "--feat-unique",
+        dest="feat_unique",
+        action="store_true",
+        help="Featured unique: Avoid duplacting featured images among the other "
+        "images in a montage.",
     )
 
     ap.add_argument(
@@ -1440,7 +1468,8 @@ def outside_feat(col_index: int, row_index: int, feat_attr: FeatureAttributes) -
 def outside_feature(
     col_index: int, row_index: int, feat_imgs: list[FeaturedImage]
 ) -> bool:
-    """Returns True if the given cell is outside the feature area for all featured images."""
+    """Returns True if the given cell is outside the feature area for all featured
+    images."""
     return all(
         outside_feat(col_index, row_index, feat.current_attr) for feat in feat_imgs
     )
@@ -1449,7 +1478,8 @@ def outside_feature(
 def get_new_size_zoom(
     current_size: tuple[int, int], target_size: tuple[int, int]
 ) -> tuple[int, int]:
-    """Returns a new size that is the same aspect ratio as the current size, but zoomed to fill the target size."""
+    """Returns a new size that is the same aspect ratio as the current size, but zoomed
+    to fill the target size."""
     scale_w = target_size[0] / current_size[0]
     scale_h = target_size[1] / current_size[1]
     scale_by = max(scale_w, scale_h)
@@ -1548,7 +1578,8 @@ def create_image(opts: MontageOptions, image_num: int) -> None:
     inner_h = int(cell_h - (opts.padding * 2))
 
     opts.log_say(
-        f"Creating new image (canvas size = {opts.canvas_width} x {opts.canvas_height} pixels)."
+        "Creating new image "
+        f"(canvas size = {opts.canvas_width} x {opts.canvas_height} pixels)."
     )
     opts.log_add(f"ncols={ncols}")
     opts.log_add(f"nrows={nrows}")
@@ -1586,7 +1617,8 @@ def create_image(opts: MontageOptions, image_num: int) -> None:
         if bg_image.size != opts.canvas_size():
             #  These should match. Warn when they do not.
             opts.log_say(
-                f"WARNING: bg_image.size={bg_image.size} but canvas_size={opts.canvas_size()}."
+                f"WARNING: bg_image.size={bg_image.size} "
+                f"but canvas_size={opts.canvas_size()}."
             )
 
         bg_image = bg_image.filter(ImageFilter.BoxBlur(opts.bg_blur))

@@ -163,7 +163,7 @@ optional arguments:
 
 ## Reference
 
-Python Pillow [home page](https://python-pillow.org/)
+PyPI - [pillow](https://pypi.org/project/pillow/)
 
 Pillow (PIL Fork) [documentation](https://pillow.readthedocs.io/en/stable/)
 

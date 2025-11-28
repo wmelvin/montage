@@ -12,7 +12,6 @@
 # Remove dist and hatch environments (prune)
 @clean:
   rm dist/*
-  rmdir dist
   hatch env prune
 
 # Apply formatting

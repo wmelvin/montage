@@ -1,3 +1,3 @@
 #  Using calver (YYYY.0M.MICRO).
 
-__version__ = "2025.02.2"
+__version__ = "2025.11.1"
